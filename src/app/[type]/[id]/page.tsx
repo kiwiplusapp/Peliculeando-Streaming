@@ -51,6 +51,13 @@ export default async function DetailPage({ params }: { params: { type: string; i
 
   const scoreColor = score >= 7 ? '#10b981' : score >= 5 ? '#fbbf24' : '#ef4444';
 
+  const credits = item.credits as {
+    cast?: { id: number; name: string; character: string; profile_path: string | null }[];
+    crew?: { id: number; name: string; job: string; profile_path: string | null }[];
+  } | undefined;
+
+  const directors = (credits?.crew || []).filter(c => c.job === 'Director');
+
   const mediaItem = {
     tmdb_id: tmdbId,
     media_type: type as 'movie' | 'tv',
@@ -62,6 +69,7 @@ export default async function DetailPage({ params }: { params: { type: string; i
     release_date: (type === 'tv' ? item.first_air_date : item.release_date) as string,
     popularity: (item.popularity as number) || 0,
     original_title: (type === 'tv' ? item.original_name : item.original_title) as string,
+    number_of_seasons: (item.number_of_seasons as number) || 0,
   };
 
   return (
@@ -183,6 +191,20 @@ export default async function DetailPage({ params }: { params: { type: string; i
               <p className="text-[#A3A3A3] leading-relaxed max-w-2xl">{overview}</p>
             )}
 
+            {directors.length > 0 && (
+              <p className="mt-3 text-sm text-[#525252]">
+                Dirección:{' '}
+                {directors.map((d, i) => (
+                  <span key={d.id}>
+                    {i > 0 && ', '}
+                    <Link href={`/personas/${d.id}`} className="text-[#A3A3A3] hover:text-amber-400 transition-colors">
+                      {d.name}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
+
             {omdb?.awards && (
               <p className="mt-3 text-xs text-[#525252] italic">{omdb.awards}</p>
             )}
@@ -191,7 +213,6 @@ export default async function DetailPage({ params }: { params: { type: string; i
 
         {/* Cast */}
         {(() => {
-          const credits = item.credits as { cast?: { id: number; name: string; character: string; profile_path: string | null }[] } | undefined;
           const cast = credits?.cast?.slice(0, 12) || [];
           if (!cast.length) return null;
           return (

@@ -56,7 +56,6 @@ export function Navbar() {
     { href: '/peliculas',label: 'Películas', icon: Film },
     { href: '/series',   label: 'Series',    icon: Tv },
     { href: '/explorar', label: 'Explorar',  icon: Compass },
-    { href: '/que-ver',  label: '¿Qué ver?', icon: Zap },
     { href: '/comunidad', label: 'Comunidad', icon: Users },
   ];
 

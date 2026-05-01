@@ -3,6 +3,7 @@ import { HeroSection } from '@/components/media/HeroSection';
 import { Carousel } from '@/components/media/Carousel';
 import { RecommendationsSection } from '@/components/media/RecommendationsSection';
 import { WeeklyTopSection } from '@/components/media/WeeklyTopSection';
+import { ContinueWatchingSection } from '@/components/media/ContinueWatchingSection';
 import { getSession } from '@/lib/auth';
 
 export const revalidate = 300; // 5 min cache
@@ -24,6 +25,7 @@ export default async function HomePage() {
       <HeroSection items={hero} />
 
       <div className="mt-8">
+        <ContinueWatchingSection />
         <RecommendationsSection userId={session?.sub} />
 
         <WeeklyTopSection />
