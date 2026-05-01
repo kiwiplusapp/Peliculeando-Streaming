@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -15,6 +13,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
+}
+
+/* Space Grotesk for display headings */
+h1, h2, .font-display {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
 }
 
 /* Global scrollbar */
@@ -86,6 +89,13 @@ body {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
+
+@keyframes xp-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-xp-slide-up { animation: xp-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(20px); }

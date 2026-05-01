@@ -33,7 +33,7 @@ export function ContinueWatchingSection() {
           return (
             <Link
               key={`${item.tmdb_id}-${item.media_type}`}
-              href={`/${item.media_type}/${item.tmdb_id}`}
+              href={`/watch/${item.media_type}/${item.tmdb_id}${item.season_number ? `?s=${item.season_number}&e=${item.episode_number}` : ''}`}
               className="group shrink-0 w-[155px] sm:w-[175px]"
             >
               <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-[#181818] border border-[#262626] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-amber-500/40">

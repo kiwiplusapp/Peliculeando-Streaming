@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { getSessionFromRequest } from '@/lib/auth';
+import { awardXP } from '@/lib/xpServer';
 
 export async function GET(req: NextRequest) {
   const session = await getSessionFromRequest(req);
@@ -40,16 +41,23 @@ export async function POST(req: NextRequest) {
 
   const { tmdb_id, media_type, season_number, episode_number, progress_seconds, title, poster_path } = await req.json();
   try {
-    await query(
+    const [result] = await query<{ xmax: string }>(
       `INSERT INTO watch_progress (user_id, tmdb_id, media_type, season_number, episode_number, progress_seconds, title, poster_path)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, tmdb_id, media_type) DO UPDATE
        SET season_number = $4, episode_number = $5, progress_seconds = $6,
            title = COALESCE($7, watch_progress.title),
            poster_path = COALESCE($8, watch_progress.poster_path),
-           updated_at = NOW()`,
+           updated_at = NOW()
+       RETURNING xmax::text`,
       [session.sub, tmdb_id, media_type, season_number || 1, episode_number || 1, progress_seconds || 0, title || null, poster_path || null]
     );
+    // xmax = '0' means INSERT (new row), non-zero means UPDATE
+    const isNew = result?.xmax === '0';
+    if (isNew) {
+      const action = media_type === 'tv' ? 'watch_episode' : 'watch_movie';
+      awardXP(Number(session.sub), action, tmdb_id).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Error' }, { status: 500 });

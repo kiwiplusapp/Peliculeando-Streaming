@@ -156,5 +156,33 @@ export async function initDB() {
     ALTER TABLE collection_items ADD COLUMN IF NOT EXISTS note TEXT;
     ALTER TABLE watch_progress ADD COLUMN IF NOT EXISTS title VARCHAR(300);
     ALTER TABLE watch_progress ADD COLUMN IF NOT EXISTS poster_path VARCHAR(200);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_total INT DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS level INT DEFAULT 0;
+  `);
+
+  // Gamification tables
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_xp_events (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      action VARCHAR(60) NOT NULL,
+      xp_gained INT NOT NULL,
+      ref_id INT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS user_achievements (
+      id SERIAL PRIMARY KEY,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      achievement_id VARCHAR(60) NOT NULL,
+      unlocked_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, achievement_id)
+    );
+  `);
+
+  // Index for fast XP event lookups
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_xp_events_user ON user_xp_events(user_id);
+    CREATE INDEX IF NOT EXISTS idx_achievements_user ON user_achievements(user_id);
   `);
 }

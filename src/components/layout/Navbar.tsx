@@ -5,10 +5,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { AuthModal } from './AuthModal';
+import { LevelBadge } from '@/components/gamification/LevelBadge';
 import {
   Search, BookOpen, ListVideo, User, LogOut,
   ChevronDown, Zap, Film, Tv, Compass, Clapperboard, Users,
 } from 'lucide-react';
+
+function useUserXP(enabled: boolean) {
+  const [xp, setXP] = useState(0);
+  useEffect(() => {
+    if (!enabled) return;
+    fetch('/api/xp').then(r => r.ok ? r.json() : null).then(d => { if (d?.xp) setXP(d.xp); }).catch(() => {});
+  }, [enabled]);
+  return xp;
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -60,6 +70,7 @@ export function Navbar() {
   ];
 
   const initial = user?.username?.[0]?.toUpperCase() || '?';
+  const userXP = useUserXP(!!user);
 
   return (
     <>
@@ -145,7 +156,10 @@ export function Navbar() {
                   <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-black text-xs font-black">
                     {initial}
                   </div>
-                  <span className="text-sm text-white font-medium hidden sm:block">{user.username}</span>
+                  <div className="hidden sm:flex flex-col items-start gap-0.5">
+                    <span className="text-sm text-white font-medium leading-none">{user.username}</span>
+                    {userXP > 0 && <LevelBadge xp={userXP} size="sm" showName />}
+                  </div>
                   <ChevronDown size={14} className="text-[#525252]" />
                 </button>
 

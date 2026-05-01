@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { getSessionFromRequest } from '@/lib/auth';
 import { updateGenreStats } from '@/lib/recommendations';
 import { getDetail } from '@/lib/tmdb';
+import { awardXP } from '@/lib/xpServer';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
@@ -70,14 +71,17 @@ export async function POST(req: NextRequest) {
     const { tmdb_id, media_type = 'movie', rating, is_fresh, content, has_spoilers, movie_title, movie_poster } = body;
     if (!tmdb_id || !rating) return NextResponse.json({ error: 'Campos requeridos faltantes' }, { status: 400 });
 
-    const [review] = await query(
+    const [review] = await query<Record<string, unknown> & { xmax: string }>(
       `INSERT INTO reviews (user_id, tmdb_id, media_type, rating, is_fresh, content, has_spoilers, movie_title, movie_poster)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (user_id, tmdb_id, media_type) DO UPDATE
        SET rating = $4, is_fresh = $5, content = $6, has_spoilers = $7, updated_at = NOW()
-       RETURNING *`,
+       RETURNING *, xmax::text`,
       [session.sub, tmdb_id, media_type, rating, is_fresh ?? rating >= 6, content || null, has_spoilers || false, movie_title, movie_poster]
     );
+    if (review.xmax === '0') {
+      awardXP(Number(session.sub), 'write_review', Number(review.id)).catch(() => {});
+    }
 
     // Update genre stats async (non-blocking)
     try {
