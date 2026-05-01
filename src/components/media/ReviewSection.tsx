@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { Star, AlertTriangle, Eye, EyeOff, ThumbsUp, ThumbsDown, Clapperboard, Flame } from 'lucide-react';
 import { toast } from '@/components/ui/Toaster';
 
 interface Review {
@@ -83,7 +83,7 @@ export function ReviewSection({ item, userId }: Props) {
         toast(j.error || 'Error', 'error');
         return;
       }
-      toast(data.myReview ? 'Reseña actualizada ✓' : 'Reseña publicada ✓');
+      toast(data.myReview ? 'Reseña actualizada' : 'Reseña publicada');
       await fetchReviews();
     } catch { toast('Error de conexión', 'error'); } finally { setSubmitting(false); }
   };
@@ -105,7 +105,13 @@ export function ReviewSection({ item, userId }: Props) {
   return (
     <div>
       <h2 className="text-xl font-bold text-white mb-5 flex items-center gap-2">
-        <span className="text-2xl">{isFresh ? '🍅' : total > 0 ? '💀' : '🎬'}</span>
+        {isFresh ? (
+          <Flame size={20} className="text-emerald-400" />
+        ) : total > 0 ? (
+          <ThumbsDown size={20} className="text-red-400" />
+        ) : (
+          <Clapperboard size={20} className="text-amber-400" />
+        )}
         Reseñas de la comunidad
         {total > 0 && (
           <span className="text-sm font-normal text-[#A3A3A3]">
@@ -120,7 +126,7 @@ export function ReviewSection({ item, userId }: Props) {
           <p className="text-sm font-medium text-white mb-4">{myReview ? 'Tu reseña' : 'Escribe tu reseña'}</p>
 
           {/* Stars */}
-          <div className="flex gap-1 mb-4">
+          <div className="flex gap-1 mb-4 items-center">
             {[1,2,3,4,5,6,7,8,9,10].map(n => (
               <button
                 key={n}
@@ -128,13 +134,17 @@ export function ReviewSection({ item, userId }: Props) {
                   setSelectedRating(n);
                   if (!selectedVerdict) setSelectedVerdict(n >= 6 ? 'fresh' : 'rotten');
                 }}
-                className={`text-lg transition-transform hover:scale-110 ${n <= selectedRating ? 'opacity-100' : 'opacity-25 hover:opacity-60'}`}
+                className="transition-transform hover:scale-110"
               >
-                ⭐
+                <Star
+                  size={18}
+                  className={n <= selectedRating ? 'text-amber-400' : 'text-[#333333]'}
+                  fill={n <= selectedRating ? '#fbbf24' : '#333333'}
+                />
               </button>
             ))}
             {selectedRating > 0 && (
-              <span className="ml-2 text-sm text-[#A3A3A3] self-center">{selectedRating}/10</span>
+              <span className="ml-2 text-sm text-[#A3A3A3]">{selectedRating}/10</span>
             )}
           </div>
 
@@ -142,23 +152,23 @@ export function ReviewSection({ item, userId }: Props) {
           <div className="flex gap-2 mb-4">
             <button
               onClick={() => setSelectedVerdict('fresh')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                 selectedVerdict === 'fresh'
                   ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
                   : 'bg-[#181818] border-[#262626] text-[#A3A3A3] hover:border-emerald-500/50'
               }`}
             >
-              🍅 FRESCO
+              <ThumbsUp size={14} /> FRESCO
             </button>
             <button
               onClick={() => setSelectedVerdict('rotten')}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                 selectedVerdict === 'rotten'
                   ? 'bg-red-500/10 border-red-500 text-red-400'
                   : 'bg-[#181818] border-[#262626] text-[#A3A3A3] hover:border-red-500/50'
               }`}
             >
-              💀 PODRIDO
+              <ThumbsDown size={14} /> PODRIDO
             </button>
           </div>
 
@@ -187,7 +197,7 @@ export function ReviewSection({ item, userId }: Props) {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="px-4 py-2 bg-brand text-black font-bold text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="px-4 py-2 bg-brand text-black font-bold text-sm rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
             >
               {submitting ? 'Guardando...' : myReview ? 'Actualizar' : 'Publicar'}
             </button>
@@ -213,7 +223,7 @@ export function ReviewSection({ item, userId }: Props) {
       <div className="space-y-4">
         {reviews.length === 0 ? (
           <div className="text-center py-10 text-[#525252]">
-            <p className="text-3xl mb-2">🎬</p>
+            <Clapperboard size={40} className="mx-auto mb-2 opacity-30" />
             <p>Sin reseñas aún. ¡Sé el primero!</p>
           </div>
         ) : (
@@ -251,8 +261,8 @@ function ReviewCard({ review: r }: { review: Review }) {
             </div>
           </div>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.is_fresh ? 'badge-fresh' : 'badge-rotten'}`}>
-          {r.is_fresh ? '🍅 FRESCO' : '💀 PODRIDO'}
+        <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${r.is_fresh ? 'badge-fresh' : 'badge-rotten'}`}>
+          {r.is_fresh ? <><ThumbsUp size={11} /> FRESCO</> : <><ThumbsDown size={11} /> PODRIDO</>}
         </span>
       </div>
 

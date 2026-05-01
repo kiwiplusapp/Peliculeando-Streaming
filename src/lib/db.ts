@@ -127,4 +127,15 @@ export async function initDB() {
       UNIQUE(user_id)
     );
   `);
+
+  // Add columns that may be missing in existing tables
+  await pool.query(`
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS movie_title VARCHAR(300);
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS movie_poster VARCHAR(200);
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS has_spoilers BOOLEAN DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_color VARCHAR(20) DEFAULT '#f59e0b';
+    ALTER TABLE collections ADD COLUMN IF NOT EXISTS cover_poster VARCHAR(200);
+    ALTER TABLE collection_items ADD COLUMN IF NOT EXISTS note TEXT;
+  `);
 }
