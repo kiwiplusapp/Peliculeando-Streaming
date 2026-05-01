@@ -15,8 +15,8 @@ export default async function PeliculasPage() {
       <div className="max-w-[1400px] mx-auto px-6 mb-6">
         <h1 className="text-2xl font-bold text-white">Películas</h1>
       </div>
-      <Carousel title="Más populares" items={popular.results} href="/explorar?media_type=movie&sort_by=popularity.desc" accent="#f59e0b" />
-      <Carousel title="Mejor valoradas" items={topRated.results} href="/explorar?media_type=movie&sort_by=vote_average.desc" accent="#10b981" />
+      <Carousel title="Más populares" items={popular.results} href="/explorar?media_type=movie&sort_by=popularity.desc" />
+      <Carousel title="Mejor valoradas" items={topRated.results} href="/explorar?media_type=movie&sort_by=vote_average.desc" />
     </div>
   );
 }

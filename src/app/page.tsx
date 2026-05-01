@@ -31,31 +31,28 @@ export default async function HomePage() {
         <WeeklyTopSection />
 
         <Carousel
-          title="En tendencia esta semana"
+          title="Tendencias de la semana"
           items={trendingRest}
           href="/explorar"
-          accent="#f59e0b"
+          showRank
         />
 
         <Carousel
           title="Películas populares"
           items={popularMovies.results}
           href="/peliculas"
-          accent="#f59e0b"
         />
 
         <Carousel
           title="Series populares"
           items={popularTV.results}
           href="/series"
-          accent="#A3A3A3"
         />
 
         <Carousel
           title="Lo mejor del cine"
           items={topMovies.results}
           href="/peliculas"
-          accent="#10b981"
         />
       </div>
     </>

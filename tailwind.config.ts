@@ -5,28 +5,33 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        sans:    ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        mono:    ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       colors: {
         void:    '#0A0A0A',
-        surface: '#111111',
-        card:    '#181818',
-        border:  '#262626',
-        border2: '#333333',
-        brand:   '#f59e0b',
+        surface: '#0f0f0f',
+        card:    '#141414',
+        border:  '#1f1f1f',
+        border2: '#2a2a2a',
+        // Primary brand — design yellow
+        brand:   '#FFE600',
+        'brand-dim': 'rgba(255,230,0,0.12)',
+        'brand-border': 'rgba(255,230,0,0.25)',
         text1:   '#F5F5F5',
         text2:   '#A3A3A3',
         text3:   '#525252',
+        text4:   '#333333',
       },
       backgroundImage: {
-        'brand-subtle': 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(251,191,36,0.12) 100%)',
+        'brand-subtle': 'linear-gradient(135deg, rgba(255,230,0,0.10) 0%, rgba(255,230,0,0.06) 100%)',
       },
       borderRadius: {
-        sm: '6px',
-        md: '10px',
-        lg: '14px',
-        xl: '20px',
+        sm: '4px',
+        md: '6px',
+        lg: '10px',
+        xl: '14px',
       },
       keyframes: {
         'fade-up': {

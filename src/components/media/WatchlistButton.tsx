@@ -61,14 +61,15 @@ export function WatchlistButton({ item }: WatchlistButtonProps) {
     <button
       onClick={toggle}
       disabled={loading}
-      className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-colors border ${
+      className={`flex items-center gap-2 px-5 py-2.5 text-[11px] font-semibold tracking-widest transition-colors border ${
         inList
-          ? 'bg-amber-500/20 border-amber-500 text-amber-400 hover:bg-amber-500/30'
-          : 'bg-[#181818] border-[#333333] text-white hover:border-[#f59e0b] hover:text-amber-400'
+          ? 'border-[#FFE600]/40 text-[#FFE600] bg-[#FFE600]/8'
+          : 'border-[#2a2a2a] text-[#A3A3A3] bg-transparent hover:border-[#FFE600]/30 hover:text-white'
       }`}
+      style={{ fontFamily: 'Space Grotesk' }}
     >
-      {loading ? <Loader size={16} className="animate-spin" /> : inList ? <Check size={16} /> : <Plus size={16} />}
-      {inList ? 'En tu lista' : 'Mi lista'}
+      {loading ? <Loader size={13} className="animate-spin" /> : inList ? <Check size={13} /> : <Plus size={13} />}
+      {inList ? 'EN LISTA' : '+ MI LISTA'}
     </button>
   );
 }

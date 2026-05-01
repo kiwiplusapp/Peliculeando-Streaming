@@ -25,9 +25,10 @@ export function PlayerButton({ item }: PlayerButtonProps) {
   return (
     <button
       onClick={handlePlay}
-      className="flex items-center gap-2.5 px-6 py-3 bg-white text-black font-bold text-sm rounded-xl hover:bg-amber-400 transition-colors shadow-lg"
+      className="flex items-center gap-2 px-5 py-2.5 text-[11px] font-black tracking-widest text-black hover:opacity-90 transition-opacity"
+      style={{ background: '#FFE600', fontFamily: 'Space Grotesk' }}
     >
-      <Play size={16} fill="black" /> Reproducir
+      <Play size={12} fill="#000" /> VER AHORA
     </button>
   );
 }

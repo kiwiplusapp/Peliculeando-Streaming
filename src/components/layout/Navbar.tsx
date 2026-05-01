@@ -6,19 +6,26 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { AuthModal } from './AuthModal';
 import { LevelBadge } from '@/components/gamification/LevelBadge';
-import {
-  Search, BookOpen, ListVideo, User, LogOut,
-  ChevronDown, Zap, Film, Tv, Compass, Clapperboard, Users,
-} from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 function useUserXP(enabled: boolean) {
   const [xp, setXP] = useState(0);
+  const [karma, setKarma] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     fetch('/api/xp').then(r => r.ok ? r.json() : null).then(d => { if (d?.xp) setXP(d.xp); }).catch(() => {});
+    fetch('/api/leaderboard?me=1').then(r => r.ok ? r.json() : null).then(d => { if (d?.karma) setKarma(d.karma); }).catch(() => {});
   }, [enabled]);
-  return xp;
+  return { xp, karma };
 }
+
+const NAV_LINKS = [
+  { href: '/',          label: 'DESCUBRIR' },
+  { href: '/explorar',  label: 'EXPLORAR'  },
+  { href: '/comunidad', label: 'RANKING'   },
+  { href: '/mi-lista',  label: 'LISTAS'    },
+  { href: '/mis-resenas', label: 'RESEÑAS' },
+];
 
 export function Navbar() {
   const pathname = usePathname();
@@ -30,12 +37,14 @@ export function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const { xp, karma } = useUserXP(!!user);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
+    const h = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', h, { passive: true });
+    return () => window.removeEventListener('scroll', h);
   }, []);
 
   useEffect(() => {
@@ -43,13 +52,11 @@ export function Navbar() {
   }, [searchOpen]);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
+    const h = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -61,149 +68,136 @@ export function Navbar() {
     }
   };
 
-  const navLinks = [
-    { href: '/',         label: 'Inicio',    icon: Clapperboard },
-    { href: '/peliculas',label: 'Películas', icon: Film },
-    { href: '/series',   label: 'Series',    icon: Tv },
-    { href: '/explorar', label: 'Explorar',  icon: Compass },
-    { href: '/comunidad', label: 'Comunidad', icon: Users },
-  ];
-
   const initial = user?.username?.[0]?.toUpperCase() || '?';
-  const userXP = useUserXP(!!user);
 
   return (
     <>
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          scrolled
-            ? 'bg-[#0A0A0A]/95 border-b border-[#262626] backdrop-blur-sm'
-            : 'bg-transparent'
-        }`}
-      >
-        <div className="max-w-[1400px] mx-auto px-6 flex items-center h-16 gap-6">
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+        scrolled ? 'bg-[#0A0A0A]/98 border-b border-[#1f1f1f] backdrop-blur-sm' : 'bg-[#0A0A0A]'
+      }`}>
+        <div className="max-w-[1400px] mx-auto px-6 flex items-center h-14 gap-8">
+
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-black font-black text-sm">
-              P
+          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+            <div className="w-6 h-6 bg-[#FFE600] flex items-center justify-center">
+              <span className="text-black font-black text-xs" style={{ fontFamily: 'Space Grotesk' }}>P</span>
             </div>
-            <span className="font-black tracking-widest text-sm text-white uppercase hidden sm:block">
+            <span className="font-black text-xs tracking-[0.18em] text-white uppercase hidden sm:block"
+              style={{ fontFamily: 'Space Grotesk', letterSpacing: '0.18em' }}>
               Peliculeando
             </span>
+            <span className="text-[10px] font-mono text-[#333] hidden sm:block">×2.4</span>
           </Link>
 
           {/* Nav links */}
-          <div className="flex items-center gap-0.5 flex-1">
-            {navLinks.map(link => {
-              const Icon = link.icon;
-              const active = pathname === link.href;
+          <div className="flex items-center gap-0 flex-1">
+            {NAV_LINKS.map(link => {
+              const active = link.href === '/'
+                ? pathname === '/'
+                : pathname.startsWith(link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    active
-                      ? 'text-amber-400 bg-amber-500/10'
-                      : 'text-[#A3A3A3] hover:text-white hover:bg-white/5'
+                  className={`relative px-3 py-4 text-[11px] font-semibold tracking-[0.1em] transition-colors ${
+                    active ? 'text-[#FFE600]' : 'text-[#525252] hover:text-[#A3A3A3]'
                   }`}
+                  style={{ fontFamily: 'Space Grotesk' }}
                 >
-                  <Icon size={14} className={active ? 'text-amber-400' : ''} />
                   {link.label}
+                  {active && (
+                    <span className="absolute bottom-0 left-3 right-3 h-px bg-[#FFE600]" />
+                  )}
                 </Link>
               );
             })}
           </div>
 
           {/* Right side */}
-          <div className="flex items-center gap-2">
-            {/* Premium CTA */}
-            <button
-              onClick={() => document.dispatchEvent(new CustomEvent('open-subscription'))}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-400 border border-amber-500/30 hover:border-amber-500/60 hover:bg-amber-500/5 rounded-lg transition-all"
-            >
-              <Zap size={12} />
-              Premium
-            </button>
-
+          <div className="flex items-center gap-3">
             {/* Search */}
             {searchOpen ? (
-              <form onSubmit={handleSearch} className="flex items-center">
+              <form onSubmit={handleSearch} className="flex items-center gap-2">
                 <input
                   ref={searchRef}
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  onBlur={() => !searchQuery && setSearchOpen(false)}
                   onKeyDown={e => e.key === 'Escape' && setSearchOpen(false)}
-                  placeholder="Buscar..."
-                  className="bg-[#181818] border border-[#333333] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#525252] w-48 focus:outline-none focus:border-amber-500"
+                  placeholder="Buscar título, director, año..."
+                  className="bg-transparent border-b border-[#333] focus:border-[#FFE600] px-0 py-1 text-xs text-white placeholder:text-[#333] w-52 focus:outline-none transition-colors"
                 />
+                <button type="button" onClick={() => setSearchOpen(false)} className="text-[#525252] hover:text-white">
+                  <X size={14} />
+                </button>
               </form>
             ) : (
-              <button
-                onClick={() => setSearchOpen(true)}
-                className="p-2 text-[#A3A3A3] hover:text-white hover:bg-white/5 rounded-lg transition-colors"
-              >
-                <Search size={18} />
+              <button onClick={() => setSearchOpen(true)}
+                className="text-[#525252] hover:text-white transition-colors p-1">
+                <Search size={15} />
               </button>
             )}
 
             {user ? (
-              <div className="relative" ref={userMenuRef}>
-                <button
-                  onClick={() => setUserMenuOpen(v => !v)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
-                >
-                  <div className="w-7 h-7 rounded-full bg-amber-500 flex items-center justify-center text-black text-xs font-black">
-                    {initial}
-                  </div>
-                  <div className="hidden sm:flex flex-col items-start gap-0.5">
-                    <span className="text-sm text-white font-medium leading-none">{user.username}</span>
-                    {userXP > 0 && <LevelBadge xp={userXP} size="sm" showName />}
-                  </div>
-                  <ChevronDown size={14} className="text-[#525252]" />
-                </button>
-
-                {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-2 w-52 bg-[#131313] border border-[#262626] rounded-xl py-1 shadow-2xl shadow-black/70 animate-fade-in">
-                    <Link href="/perfil" onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#A3A3A3] hover:text-white hover:bg-white/5 transition-colors">
-                      <User size={15} /> Mi perfil
-                    </Link>
-                    <Link href="/mi-lista" onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#A3A3A3] hover:text-white hover:bg-white/5 transition-colors">
-                      <ListVideo size={15} /> Mi lista
-                    </Link>
-                    <Link href="/mis-resenas" onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#A3A3A3] hover:text-white hover:bg-white/5 transition-colors">
-                      <BookOpen size={15} /> Mis reseñas
-                    </Link>
-                    <Link href="/colecciones" onClick={() => setUserMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#A3A3A3] hover:text-white hover:bg-white/5 transition-colors">
-                      <Film size={15} /> Colecciones
-                    </Link>
-                    <div className="my-1 border-t border-[#1A1A1A]" />
-                    <button
-                      onClick={() => { setUserMenuOpen(false); logout(); }}
-                      className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
-                    >
-                      <LogOut size={15} /> Cerrar sesión
-                    </button>
-                  </div>
+              <>
+                {/* Karma badge */}
+                {karma > 0 && (
+                  <Link href="/comunidad"
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 border border-[#FFE600]/30 bg-[#FFE600]/8 hover:bg-[#FFE600]/15 transition-colors">
+                    <span className="text-[10px] font-black font-mono text-[#FFE600] tracking-wider">
+                      KARMA {karma.toLocaleString()}
+                    </span>
+                  </Link>
                 )}
-              </div>
+
+                {/* Avatar + menu */}
+                <div className="relative" ref={menuRef}>
+                  <button onClick={() => setUserMenuOpen(v => !v)}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <div className="w-7 h-7 flex items-center justify-center text-black text-[11px] font-black"
+                      style={{ background: '#FFE600' }}>
+                      {initial}
+                    </div>
+                    <div className="hidden sm:flex flex-col items-start">
+                      <span className="text-[11px] font-semibold text-white leading-none tracking-wide">{user.username}</span>
+                      {xp > 0 && <LevelBadge xp={xp} size="sm" showName />}
+                    </div>
+                  </button>
+
+                  {userMenuOpen && (
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-[#0f0f0f] border border-[#1f1f1f] py-1 shadow-2xl animate-fade-in z-50">
+                      {[
+                        { href: '/perfil',      label: 'MI PERFIL' },
+                        { href: '/mi-lista',    label: 'MI LISTA' },
+                        { href: '/mis-resenas', label: 'MIS RESEÑAS' },
+                        { href: '/colecciones', label: 'COLECCIONES' },
+                      ].map(item => (
+                        <Link key={item.href} href={item.href} onClick={() => setUserMenuOpen(false)}
+                          className="block px-4 py-2.5 text-[10px] font-semibold tracking-widest text-[#737373] hover:text-white hover:bg-white/3 transition-colors"
+                          style={{ fontFamily: 'Space Grotesk' }}>
+                          {item.label}
+                        </Link>
+                      ))}
+                      <div className="my-1 border-t border-[#1a1a1a]" />
+                      <button onClick={() => { setUserMenuOpen(false); logout(); }}
+                        className="w-full text-left px-4 py-2.5 text-[10px] font-semibold tracking-widest text-red-500 hover:bg-red-500/8 transition-colors"
+                        style={{ fontFamily: 'Space Grotesk' }}>
+                        CERRAR SESIÓN
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setAuthOpen('login')}
-                  className="px-3 py-1.5 text-sm text-[#A3A3A3] hover:text-white transition-colors font-medium"
-                >
-                  Iniciar sesión
+              <div className="flex items-center gap-3">
+                <button onClick={() => setAuthOpen('login')}
+                  className="text-[11px] font-semibold tracking-widest text-[#525252] hover:text-white transition-colors"
+                  style={{ fontFamily: 'Space Grotesk' }}>
+                  ENTRAR
                 </button>
-                <button
-                  onClick={() => setAuthOpen('register')}
-                  className="px-3 py-1.5 text-sm font-bold bg-amber-500 hover:bg-amber-400 text-black rounded-lg transition-colors"
-                >
-                  Registrarse
+                <button onClick={() => setAuthOpen('register')}
+                  className="px-3 py-1.5 text-[11px] font-black tracking-widest text-black hover:opacity-90 transition-opacity"
+                  style={{ background: '#FFE600', fontFamily: 'Space Grotesk' }}>
+                  REGISTRO
                 </button>
               </div>
             )}
@@ -211,12 +205,7 @@ export function Navbar() {
         </div>
       </nav>
 
-      {authOpen && (
-        <AuthModal
-          initialTab={authOpen}
-          onClose={() => setAuthOpen(null)}
-        />
-      )}
+      {authOpen && <AuthModal initialTab={authOpen} onClose={() => setAuthOpen(null)} />}
     </>
   );
 }
