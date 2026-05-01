@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Next.js Build Output
+.next
+out
+
+# Production Build
+build
+
+# Environment Variables (Keep these private!)
+.env.local
+.env
+# Sometimes people add .env to be safe, but Next.js specifically uses .env.local for secrets
+
+# Debugging Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# System Files
+.DS_Store
+.pem
+
+# TypeScript
+.tsbuildinfo
+next-env.d.ts
+
+# Vercel Deployment Metadata
+.vercel
