@@ -166,3 +166,23 @@ export async function getWatchProviders(type: 'movie' | 'tv', id: number) {
   const { data } = await tmdb.get(`/${type}/${id}/watch/providers`);
   return data.results?.MX || data.results?.US || null;
 }
+
+export async function getPerson(id: number) {
+  const { data } = await tmdb.get(`/person/${id}`, {
+    params: { append_to_response: 'combined_credits,external_ids' },
+  });
+  return data as Record<string, unknown>;
+}
+
+export async function searchPeople(q: string) {
+  const { data } = await tmdb.get('/search/person', { params: { query: q, include_adult: false } });
+  return data.results as Record<string, unknown>[];
+}
+
+export async function discoverByPerson(personId: number, mediaType: 'movie' | 'tv', role: 'cast' | 'crew') {
+  const key = role === 'cast' ? 'with_cast' : 'with_crew';
+  const { data } = await tmdb.get(`/discover/${mediaType}`, {
+    params: { [key]: personId, sort_by: 'vote_count.desc', include_adult: false },
+  });
+  return (data.results as Record<string, unknown>[]).map(i => normalize(i, mediaType));
+}

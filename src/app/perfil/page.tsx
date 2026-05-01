@@ -37,6 +37,24 @@ export default async function PerfilPage() {
     [session.sub]
   );
 
+  const [karmaRow] = await query<{ karma: number; helpful_votes: number }>(
+    `SELECT
+       (COUNT(DISTINCT r.id) * 10
+        + COALESCE(SUM(rv.helpful_count), 0) * 3
+        + COUNT(DISTINCT mt.id)) AS karma,
+       COALESCE(SUM(rv.helpful_count), 0) AS helpful_votes
+     FROM users u
+     LEFT JOIN reviews r ON r.user_id = u.id
+     LEFT JOIN (
+       SELECT review_id, COUNT(*) FILTER (WHERE is_helpful) AS helpful_count
+       FROM review_votes GROUP BY review_id
+     ) rv ON rv.review_id = r.id
+     LEFT JOIN media_tags mt ON mt.user_id = u.id
+     WHERE u.id = $1
+     GROUP BY u.id`,
+    [session.sub]
+  ).catch(() => [{ karma: 0, helpful_votes: 0 }]);
+
   return (
     <div className="min-h-screen pt-20 pb-12">
       <div className="max-w-2xl mx-auto px-6">
@@ -44,6 +62,8 @@ export default async function PerfilPage() {
           user={user}
           stats={{ reviews: Number(reviewCount), watchlist: Number(watchlistCount), collections: Number(collectionCount) }}
           genreStats={genreStats}
+          karma={Number(karmaRow?.karma || 0)}
+          helpfulVotes={Number(karmaRow?.helpful_votes || 0)}
         />
       </div>
     </div>

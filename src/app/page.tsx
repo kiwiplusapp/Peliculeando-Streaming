@@ -2,6 +2,7 @@ import { getTrending, getPopular, getTopRated } from '@/lib/tmdb';
 import { HeroSection } from '@/components/media/HeroSection';
 import { Carousel } from '@/components/media/Carousel';
 import { RecommendationsSection } from '@/components/media/RecommendationsSection';
+import { WeeklyTopSection } from '@/components/media/WeeklyTopSection';
 import { getSession } from '@/lib/auth';
 
 export const revalidate = 300; // 5 min cache
@@ -24,6 +25,8 @@ export default async function HomePage() {
 
       <div className="mt-8">
         <RecommendationsSection userId={session?.sub} />
+
+        <WeeklyTopSection />
 
         <Carousel
           title="En tendencia esta semana"

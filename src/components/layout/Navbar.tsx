@@ -7,7 +7,7 @@ import { useAuth } from './AuthProvider';
 import { AuthModal } from './AuthModal';
 import {
   Search, BookOpen, ListVideo, User, LogOut,
-  ChevronDown, Zap, Film, Tv, Compass, Clapperboard,
+  ChevronDown, Zap, Film, Tv, Compass, Clapperboard, Users,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -57,6 +57,7 @@ export function Navbar() {
     { href: '/series',   label: 'Series',    icon: Tv },
     { href: '/explorar', label: 'Explorar',  icon: Compass },
     { href: '/que-ver',  label: '¿Qué ver?', icon: Zap },
+    { href: '/comunidad', label: 'Comunidad', icon: Users },
   ];
 
   const initial = user?.username?.[0]?.toUpperCase() || '?';

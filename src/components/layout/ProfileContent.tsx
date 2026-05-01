@@ -1,15 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { BookOpen, ListVideo, Sparkles, Star } from 'lucide-react';
+import { BookOpen, ListVideo, Sparkles, Star, Trophy } from 'lucide-react';
 
 interface Props {
   user: { id: number; username: string; email: string; avatar_color: string; bio: string | null; created_at: string };
   stats: { reviews: number; watchlist: number; collections: number };
   genreStats: { genre_name: string; watch_count: number; total_rating: number }[];
+  karma?: number;
+  helpfulVotes?: number;
 }
 
-export function ProfileContent({ user, stats, genreStats }: Props) {
+export function ProfileContent({ user, stats, genreStats, karma = 0, helpfulVotes = 0 }: Props) {
   const initial = user.username[0].toUpperCase();
   const joined = new Date(user.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'long' });
 
@@ -29,6 +31,22 @@ export function ProfileContent({ user, stats, genreStats }: Props) {
           <p className="text-xs text-[#525252] mt-1">Miembro desde {joined}</p>
         </div>
       </div>
+
+      {/* Karma badge */}
+      {karma > 0 && (
+        <div className="flex items-center gap-3 mb-6 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Trophy size={18} className="text-amber-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">{karma.toLocaleString()} karma</p>
+            <p className="text-xs text-[#525252]">{helpfulVotes} votos útiles recibidos</p>
+          </div>
+          <Link href="/comunidad" className="ml-auto text-xs text-amber-400 hover:text-amber-300">
+            Ver ranking →
+          </Link>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-8">

@@ -27,11 +27,23 @@ export async function GET(req: NextRequest) {
     if (!tmdb_id) return NextResponse.json({ error: 'tmdb_id requerido' }, { status: 400 });
 
     const rows = await query<Record<string, unknown>>(
-      `SELECT r.*, u.username, u.avatar_color
-       FROM reviews r JOIN users u ON r.user_id = u.id
+      `SELECT r.*, u.username, u.avatar_color,
+              COALESCE(v.helpful_count, 0) AS helpful_votes,
+              COALESCE(v.total_count, 0) AS total_votes,
+              CASE WHEN mv.user_id IS NOT NULL THEN mv.is_helpful ELSE NULL END AS my_vote
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       LEFT JOIN (
+         SELECT review_id,
+                COUNT(*) FILTER (WHERE is_helpful) AS helpful_count,
+                COUNT(*) AS total_count
+         FROM review_votes GROUP BY review_id
+       ) v ON v.review_id = r.id
+       LEFT JOIN review_votes mv ON mv.review_id = r.id AND mv.user_id = $3
        WHERE r.tmdb_id = $1 AND r.media_type = $2
-       ORDER BY r.created_at DESC`,
-      [tmdb_id, media_type]
+       ORDER BY (COALESCE(v.helpful_count, 0) * 2 + 1) / (COALESCE(v.total_count, 0) + 2) DESC,
+                r.created_at DESC`,
+      [tmdb_id, media_type, session?.sub || null]
     );
 
     const total = rows.length;

@@ -9,7 +9,8 @@ import { AddToCollectionButton } from '@/components/media/AddToCollectionButton'
 import { ReviewSection } from '@/components/media/ReviewSection';
 import { TagSection } from '@/components/media/TagSection';
 import { Carousel } from '@/components/media/Carousel';
-import { Star, Clock, Calendar, Globe, Tv } from 'lucide-react';
+import Link from 'next/link';
+import { Star, Clock, Calendar, Globe, Tv, Users } from 'lucide-react';
 
 export const revalidate = 600;
 
@@ -187,6 +188,47 @@ export default async function DetailPage({ params }: { params: { type: string; i
             )}
           </div>
         </div>
+
+        {/* Cast */}
+        {(() => {
+          const credits = item.credits as { cast?: { id: number; name: string; character: string; profile_path: string | null }[] } | undefined;
+          const cast = credits?.cast?.slice(0, 12) || [];
+          if (!cast.length) return null;
+          return (
+            <div className="mt-10">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Users size={18} className="text-amber-400" />
+                Reparto
+              </h2>
+              <div className="flex gap-3 overflow-x-auto scrollbar-none pb-2">
+                {cast.map(person => (
+                  <Link
+                    key={person.id}
+                    href={`/personas/${person.id}`}
+                    className="shrink-0 w-24 group"
+                  >
+                    <div className="w-24 h-24 rounded-xl overflow-hidden bg-[#181818] border border-[#262626] group-hover:border-amber-500/40 transition-colors mb-2">
+                      {person.profile_path ? (
+                        <Image
+                          src={`https://image.tmdb.org/t/p/w185${person.profile_path}`}
+                          alt={person.name}
+                          width={96} height={96}
+                          className="object-cover object-top w-full h-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl font-bold text-[#333333]">
+                          {person.name[0]}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs font-medium text-white line-clamp-2 leading-tight">{person.name}</p>
+                    <p className="text-xs text-[#525252] line-clamp-1 mt-0.5">{person.character}</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Tags */}
         <div className="mt-10">

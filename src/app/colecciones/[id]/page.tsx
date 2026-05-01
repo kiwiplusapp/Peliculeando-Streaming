@@ -51,7 +51,7 @@ export default async function CollectionDetailPage({ params }: { params: { id: s
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">{col.title as string}</h1>
-            {col.description && (
+            {(col.description as string | null) && (
               <p className="text-[#A3A3A3] mb-2">{col.description as string}</p>
             )}
             <p className="text-sm text-[#525252]">

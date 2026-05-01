@@ -126,9 +126,26 @@ export async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE(user_id)
     );
+
+    CREATE TABLE IF NOT EXISTS review_votes (
+      id SERIAL PRIMARY KEY,
+      review_id INT NOT NULL REFERENCES reviews(id) ON DELETE CASCADE,
+      user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      is_helpful BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(review_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS user_follows (
+      follower_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      following_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      PRIMARY KEY (follower_id, following_id),
+      CHECK (follower_id != following_id)
+    );
   `);
 
-  // Add columns that may be missing in existing tables
+  // Add columns to existing tables that may be missing
   await pool.query(`
     ALTER TABLE reviews ADD COLUMN IF NOT EXISTS movie_title VARCHAR(300);
     ALTER TABLE reviews ADD COLUMN IF NOT EXISTS movie_poster VARCHAR(200);

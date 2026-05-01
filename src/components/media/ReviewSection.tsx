@@ -14,6 +14,9 @@ interface Review {
   content: string | null;
   has_spoilers: boolean;
   created_at: string;
+  helpful_votes: number;
+  total_votes: number;
+  my_vote: boolean | null;
 }
 
 interface ReviewData {
@@ -227,17 +230,46 @@ export function ReviewSection({ item, userId }: Props) {
             <p>Sin reseñas aún. ¡Sé el primero!</p>
           </div>
         ) : (
-          reviews.map(r => <ReviewCard key={r.id} review={r} />)
+          reviews.map(r => <ReviewCard key={r.id} review={r} userId={userId} />)
         )}
       </div>
     </div>
   );
 }
 
-function ReviewCard({ review: r }: { review: Review }) {
+function ReviewCard({ review: r, userId }: { review: Review; userId?: string }) {
   const [spoilerRevealed, setSpoilerRevealed] = useState(false);
+  const [helpfulVotes, setHelpfulVotes] = useState(r.helpful_votes || 0);
+  const [totalVotes, setTotalVotes] = useState(r.total_votes || 0);
+  const [myVote, setMyVote] = useState<boolean | null>(r.my_vote ?? null);
+  const [voting, setVoting] = useState(false);
+
   const date = new Date(r.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: 'short', day: 'numeric' });
   const initial = (r.username || '?')[0].toUpperCase();
+  const isOwn = userId && String(r.user_id) === userId;
+
+  const vote = async (isHelpful: boolean) => {
+    if (!userId || isOwn || voting) return;
+    setVoting(true);
+    try {
+      if (myVote === isHelpful) {
+        await fetch(`/api/reviews/vote?review_id=${r.id}`, { method: 'DELETE' });
+        setMyVote(null);
+        setHelpfulVotes(h => isHelpful ? h - 1 : h);
+        setTotalVotes(t => t - 1);
+      } else {
+        const res = await fetch('/api/reviews/vote', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ review_id: r.id, is_helpful: isHelpful }),
+        });
+        const d = await res.json();
+        setMyVote(isHelpful);
+        setHelpfulVotes(d.helpful);
+        setTotalVotes(d.total);
+      }
+    } finally { setVoting(false); }
+  };
 
   return (
     <div className="bg-[#111111] border border-[#262626] rounded-xl p-4">
@@ -290,6 +322,40 @@ function ReviewCard({ review: r }: { review: Review }) {
             )}
           </div>
         )
+      )}
+
+      {/* Helpful votes */}
+      {!isOwn && (
+        <div className="mt-3 pt-3 border-t border-[#1f1f1f] flex items-center gap-3">
+          <span className="text-xs text-[#525252]">¿Útil?</span>
+          <button
+            onClick={() => vote(true)}
+            disabled={!userId || voting}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
+              myVote === true
+                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
+                : 'bg-[#181818] border-[#262626] text-[#525252] hover:text-white hover:border-[#333333]'
+            } disabled:opacity-40 disabled:cursor-default`}
+          >
+            <ThumbsUp size={11} /> {helpfulVotes}
+          </button>
+          <button
+            onClick={() => vote(false)}
+            disabled={!userId || voting}
+            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg border transition-colors ${
+              myVote === false
+                ? 'bg-red-500/10 border-red-500/40 text-red-400'
+                : 'bg-[#181818] border-[#262626] text-[#525252] hover:text-white hover:border-[#333333]'
+            } disabled:opacity-40 disabled:cursor-default`}
+          >
+            <ThumbsDown size={11} /> {totalVotes - helpfulVotes}
+          </button>
+          {totalVotes > 0 && (
+            <span className="text-xs text-[#525252]">
+              {Math.round((helpfulVotes / totalVotes) * 100)}% útil
+            </span>
+          )}
+        </div>
       )}
     </div>
   );
