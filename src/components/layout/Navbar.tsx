@@ -20,11 +20,12 @@ function useUserXP(enabled: boolean) {
 }
 
 const NAV_LINKS = [
-  { href: '/',          label: 'DESCUBRIR' },
-  { href: '/explorar',  label: 'EXPLORAR'  },
-  { href: '/comunidad', label: 'RANKING'   },
-  { href: '/mi-lista',  label: 'LISTAS'    },
-  { href: '/mis-resenas', label: 'RESEÑAS' },
+  { href: '/',            label: 'DESCUBRIR' },
+  { href: '/explorar',    label: 'EXPLORAR'  },
+  { href: '/comunidad',   label: 'RANKING'   },
+  { href: '/mi-lista',    label: 'LISTAS'    },
+  { href: '/mis-resenas', label: 'RESEÑAS'   },
+  { href: '/perfil',      label: 'DIARIO'    },
 ];
 
 export function Navbar() {

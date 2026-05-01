@@ -45,9 +45,12 @@ export function Carousel({ title, items, href, showRank = false }: CarouselProps
     <section className="mb-10">
       {/* Section header */}
       <div className="flex items-center justify-between mb-4 px-6 max-w-[1400px] mx-auto">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {showRank && (
-            <span className="text-[10px] font-black font-mono text-[#FFE600] tracking-widest">#1</span>
+            <>
+              <span className="text-[10px] font-black font-mono text-[#FFE600] tracking-widest leading-none">01</span>
+              <span className="block w-6 h-px bg-[#FFE600]/60" />
+            </>
           )}
           <h2 className="text-[11px] font-black tracking-[0.12em] text-white uppercase"
             style={{ fontFamily: 'Space Grotesk' }}>
