@@ -19,31 +19,15 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(progress || null);
     }
 
-    // Return all progress for the user (for "continue watching")
+    // Return all progress for the user (Continue Watching)
     const rows = await query(
-      `SELECT wp.*, r.movie_title AS title, r.movie_poster AS poster_path
-       FROM watch_progress wp
-       LEFT JOIN reviews r ON r.user_id = wp.user_id AND r.tmdb_id = wp.tmdb_id AND r.media_type = wp.media_type
-       WHERE wp.user_id = $1
-       ORDER BY wp.updated_at DESC LIMIT 20`,
+      `SELECT * FROM watch_progress
+       WHERE user_id = $1 AND title IS NOT NULL
+       ORDER BY updated_at DESC LIMIT 20`,
       [session.sub]
     );
 
-    // Also try to get title from watchlist for items without a review
-    const withTitles = await query(
-      `SELECT wp.*,
-              COALESCE(r.movie_title, w.title) AS title,
-              COALESCE(r.movie_poster, w.poster_path) AS poster_path
-       FROM watch_progress wp
-       LEFT JOIN reviews r ON r.user_id = wp.user_id AND r.tmdb_id = wp.tmdb_id AND r.media_type = wp.media_type
-       LEFT JOIN watchlist w ON w.user_id = wp.user_id AND w.tmdb_id = wp.tmdb_id AND w.media_type = wp.media_type
-       WHERE wp.user_id = $1
-         AND (r.movie_title IS NOT NULL OR w.title IS NOT NULL)
-       ORDER BY wp.updated_at DESC LIMIT 10`,
-      [session.sub]
-    );
-
-    return NextResponse.json({ items: withTitles.length ? withTitles : rows });
+    return NextResponse.json({ items: rows });
   } catch (err) {
     console.error(err);
     return NextResponse.json(null);
@@ -54,14 +38,17 @@ export async function POST(req: NextRequest) {
   const session = await getSessionFromRequest(req);
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
-  const { tmdb_id, media_type, season_number, episode_number, progress_seconds } = await req.json();
+  const { tmdb_id, media_type, season_number, episode_number, progress_seconds, title, poster_path } = await req.json();
   try {
     await query(
-      `INSERT INTO watch_progress (user_id, tmdb_id, media_type, season_number, episode_number, progress_seconds)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO watch_progress (user_id, tmdb_id, media_type, season_number, episode_number, progress_seconds, title, poster_path)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (user_id, tmdb_id, media_type) DO UPDATE
-       SET season_number = $4, episode_number = $5, progress_seconds = $6, updated_at = NOW()`,
-      [session.sub, tmdb_id, media_type, season_number || 1, episode_number || 1, progress_seconds || 0]
+       SET season_number = $4, episode_number = $5, progress_seconds = $6,
+           title = COALESCE($7, watch_progress.title),
+           poster_path = COALESCE($8, watch_progress.poster_path),
+           updated_at = NOW()`,
+      [session.sub, tmdb_id, media_type, season_number || 1, episode_number || 1, progress_seconds || 0, title || null, poster_path || null]
     );
     return NextResponse.json({ ok: true });
   } catch {

@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Plus, Check } from 'lucide-react';
+import { Star, Plus, Check, Play } from 'lucide-react';
 import { useState } from 'react';
 import { imgUrl, MediaItem } from '@/lib/tmdb';
 import { toast } from '@/components/ui/Toaster';
+import { useWatchProgress } from './WatchProgressContext';
 
 interface MediaCardProps {
   item: MediaItem;
@@ -16,6 +17,8 @@ interface MediaCardProps {
 export function MediaCard({ item, inWatchlist = false, onWatchlistChange }: MediaCardProps) {
   const [inList, setInList] = useState(inWatchlist);
   const [loading, setLoading] = useState(false);
+  const { getProgress } = useWatchProgress();
+  const watched = getProgress(item.tmdb_id, item.media_type);
   const poster = imgUrl(item.poster_path, 'w342');
   const score = item.vote_average || 0;
   const year = item.release_date?.slice(0, 4);
@@ -98,17 +101,36 @@ export function MediaCard({ item, inWatchlist = false, onWatchlistChange }: Medi
           {inList ? <Check size={13} /> : <Plus size={13} />}
         </button>
 
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {/* Hover overlay with play icon */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-white/15 border border-white/30 flex items-center justify-center backdrop-blur-sm">
+            <Play size={16} className="text-white" fill="white" />
+          </div>
+        </div>
+
+        {/* Progress bar if watched */}
+        {watched && (
+          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#333333]">
+            <div className="h-full bg-amber-500 w-1/3 rounded-r-full" />
+          </div>
+        )}
       </div>
 
       <div className="mt-2 px-0.5">
         <p className="text-sm font-medium text-white line-clamp-2 leading-tight">{item.title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          {year && <span className="text-xs text-[#525252]">{year}</span>}
-          <span className="text-xs text-[#525252] capitalize">
-            {item.media_type === 'tv' ? 'Serie' : 'Película'}
-          </span>
+          {watched && item.media_type === 'tv' ? (
+            <span className="text-xs text-amber-400 font-medium">
+              T{watched.season_number} · E{watched.episode_number}
+            </span>
+          ) : (
+            <>
+              {year && <span className="text-xs text-[#525252]">{year}</span>}
+              <span className="text-xs text-[#525252]">
+                {item.media_type === 'tv' ? 'Serie' : 'Película'}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </Link>

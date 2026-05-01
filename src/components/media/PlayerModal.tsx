@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface Episode {
   episode_number: number;
@@ -12,7 +12,7 @@ interface PlayerItem {
   tmdb_id: number;
   media_type: 'movie' | 'tv';
   title: string;
-  release_date?: string;
+  poster_path?: string | null;
   number_of_seasons?: number;
 }
 
@@ -43,11 +43,11 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // Escape key to close
+  // Escape key closes the modal
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    document.addEventListener('keydown', handler, true);
+    return () => document.removeEventListener('keydown', handler, true);
   }, [onClose]);
 
   // Fetch episode list when season changes
@@ -69,11 +69,13 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
         season_number: season,
         episode_number: episode,
         progress_seconds: 0,
+        title: item.title,
+        poster_path: item.poster_path || null,
       }),
     }).catch(() => {});
   }, [item, season, episode]);
 
-  // Save progress periodically
+  // Save progress periodically after progress is loaded
   useEffect(() => {
     if (!progressLoaded) return;
     saveProgress();
@@ -81,7 +83,6 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
     return () => { if (saveRef.current) clearInterval(saveRef.current); };
   }, [saveProgress, progressLoaded]);
 
-  // Save on close
   const handleClose = useCallback(() => {
     saveProgress();
     onClose();
@@ -91,31 +92,45 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
     ? `https://vaplayer.ru/embed/tv?tmdb=${item.tmdb_id}&season=${season}&episode=${episode}&primaryColor=f59e0b`
     : `https://vaplayer.ru/embed/movie?tmdb=${item.tmdb_id}&primaryColor=f59e0b`;
 
+  const HEADER_H = 52;
+  const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-      {/* Header — sits above the iframe via flex order, plus explicit z-index */}
+    <>
+      {/* Dark backdrop */}
+      <div className="fixed inset-0 z-[100] bg-black" />
+
+      {/*
+        Header — position: fixed so it lives in its own stacking context,
+        completely above the iframe regardless of iframe pointer capture.
+        Use onMouseDown (not onClick) so it fires before the iframe focus event.
+      */}
       <div
-        className="relative z-[110] flex items-center justify-between px-4 py-3 bg-[#0d0d0d]/95 border-b border-[#262626] shrink-0 backdrop-blur-sm"
-        style={{ pointerEvents: 'auto' }}
+        className="fixed top-0 left-0 right-0 z-[200] flex items-center justify-between px-4 bg-[#0d0d0d] border-b border-[#262626]"
+        style={{ height: HEADER_H }}
       >
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-white text-sm truncate max-w-[60vw]">{item.title}</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="font-semibold text-white text-sm truncate">{item.title}</span>
           {isTV && (
-            <span className="text-xs text-[#A3A3A3] shrink-0">T{season} · E{episode}</span>
+            <span className="text-xs text-amber-400 shrink-0 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+              T{season} · E{episode}
+            </span>
           )}
         </div>
-        {/* Use onMouseDown so the click fires before the iframe steals focus */}
         <button
           onMouseDown={handleClose}
-          className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 text-[#A3A3A3] hover:text-white transition-colors border border-white/10"
-          aria-label="Cerrar"
+          className="ml-4 shrink-0 w-9 h-9 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 text-[#A3A3A3] hover:text-white transition-colors border border-white/10"
+          aria-label="Cerrar (Escape)"
         >
           <X size={18} />
         </button>
       </div>
 
-      {/* Player area */}
-      <div className="flex-1 relative z-[100]">
+      {/* Iframe — occupies remaining space between header and footer */}
+      <div
+        className="fixed left-0 right-0 z-[150]"
+        style={{ top: HEADER_H, bottom: FOOTER_H }}
+      >
         {progressLoaded && (
           <iframe
             key={`${item.tmdb_id}-${season}-${episode}`}
@@ -123,18 +138,19 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
             allowFullScreen
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
-            className="absolute inset-0 w-full h-full border-none"
+            /* sandbox blocks popups/top-navigation from ad networks inside the iframe */
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+            className="w-full h-full border-none"
           />
         )}
       </div>
 
-      {/* Episode bar (TV only) */}
+      {/* Episode bar — fixed at bottom, same z-index as header */}
       {isTV && episodes.length > 0 && (
         <div
-          className="relative z-[110] flex items-center gap-2 px-4 py-3 bg-[#0d0d0d]/95 border-t border-[#262626] overflow-x-auto shrink-0 scrollbar-none backdrop-blur-sm"
-          style={{ pointerEvents: 'auto' }}
+          className="fixed bottom-0 left-0 right-0 z-[200] flex items-center gap-2 px-4 bg-[#0d0d0d] border-t border-[#262626] overflow-x-auto scrollbar-none"
+          style={{ height: FOOTER_H }}
         >
-          {/* Season buttons */}
           {Array.from({ length: seasons }, (_, i) => i + 1).map(s => (
             <button
               key={s}
@@ -142,7 +158,7 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
               className={`px-3 py-1.5 text-xs font-medium rounded-lg shrink-0 transition-colors ${
                 s === season
                   ? 'bg-amber-500 text-black font-bold'
-                  : 'bg-[#181818] text-[#A3A3A3] hover:text-white border border-[#333333]'
+                  : 'bg-[#1a1a1a] text-[#A3A3A3] hover:text-white border border-[#333333]'
               }`}
             >
               T{s}
@@ -151,7 +167,6 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
 
           <div className="w-px h-5 bg-[#333333] shrink-0 mx-1" />
 
-          {/* Episode buttons */}
           {episodes.map(ep => (
             <button
               key={ep.episode_number}
@@ -159,7 +174,7 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
               className={`px-3 py-1.5 text-xs rounded-lg shrink-0 transition-colors whitespace-nowrap ${
                 ep.episode_number === episode
                   ? 'bg-amber-500 text-black font-bold'
-                  : 'bg-[#181818] text-[#A3A3A3] hover:text-white border border-[#333333]'
+                  : 'bg-[#1a1a1a] text-[#A3A3A3] hover:text-white border border-[#333333]'
               }`}
             >
               {ep.episode_number}. {ep.name}
@@ -167,6 +182,6 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

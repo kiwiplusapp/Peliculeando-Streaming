@@ -5,6 +5,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/Toaster';
 import { SubscriptionModal } from '@/components/ui/SubscriptionModal';
 import { AuthProvider } from '@/components/layout/AuthProvider';
+import { WatchProgressProvider } from '@/components/media/WatchProgressContext';
 import { getSession } from '@/lib/auth';
 
 export const metadata: Metadata = {
@@ -30,10 +31,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           strategy="lazyOnload"
         />
         <AuthProvider initialSession={session}>
-          <Navbar />
-          <main>{children}</main>
-          <Toaster />
-          <SubscriptionModal />
+          <WatchProgressProvider>
+            <Navbar />
+            <main>{children}</main>
+            <Toaster />
+            <SubscriptionModal />
+          </WatchProgressProvider>
         </AuthProvider>
       </body>
     </html>

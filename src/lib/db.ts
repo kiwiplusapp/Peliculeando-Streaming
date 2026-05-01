@@ -154,5 +154,7 @@ export async function initDB() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_color VARCHAR(20) DEFAULT '#f59e0b';
     ALTER TABLE collections ADD COLUMN IF NOT EXISTS cover_poster VARCHAR(200);
     ALTER TABLE collection_items ADD COLUMN IF NOT EXISTS note TEXT;
+    ALTER TABLE watch_progress ADD COLUMN IF NOT EXISTS title VARCHAR(300);
+    ALTER TABLE watch_progress ADD COLUMN IF NOT EXISTS poster_path VARCHAR(200);
   `);
 }
