@@ -64,7 +64,7 @@ export function OlimpoContent() {
           </p>
 
           {/* Stats bar */}
-          <div className="flex flex-wrap items-center gap-4 text-[10px] font-mono text-[#333] tracking-widest border-t border-[#1f1f1f] pt-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] font-mono text-[#333] tracking-widest border-t border-[#1f1f1f] pt-4">
             <span>{(reviewers.length * 12 || 0).toLocaleString()} RESEÑADORES ACTIVOS</span>
             <span className="text-[#1f1f1f]">·</span>
             <span>{reviewers.length > 0
@@ -120,7 +120,7 @@ export function OlimpoContent() {
           <>
             {/* Podium — top 3 */}
             {top3.length >= 2 && (
-              <div className="flex items-end justify-center gap-3 mb-10">
+              <div className="flex flex-wrap sm:flex-nowrap items-end justify-center gap-3 mb-10">
                 {podiumOrder.map((reviewer, idx) => {
                   const rank = reviewers.indexOf(reviewer) + 1;
                   const isFirst = rank === 1;
@@ -134,8 +134,8 @@ export function OlimpoContent() {
                     >
                       <div className={`flex flex-col items-center justify-between p-5 border transition-all ${
                         isFirst
-                          ? 'bg-[#FFE600] border-[#FFE600] min-w-[160px] min-h-[140px]'
-                          : 'bg-[#141414] border-[#1f1f1f] hover:border-[#FFE600]/20 min-w-[130px] min-h-[110px]'
+                          ? 'bg-[#FFE600] border-[#FFE600] w-[140px] sm:w-[160px] min-h-[130px] sm:min-h-[140px]'
+                          : 'bg-[#141414] border-[#1f1f1f] hover:border-[#FFE600]/20 w-[120px] sm:w-[130px] min-h-[100px] sm:min-h-[110px]'
                       }`}>
                         {/* Rank number */}
                         <p className={`text-[10px] font-black font-mono tracking-widest ${isFirst ? 'text-black/50' : 'text-[#333]'}`}>
@@ -171,9 +171,10 @@ export function OlimpoContent() {
             )}
 
             {/* Leaderboard table */}
-            <div className="border border-[#1f1f1f]">
+            <div className="border border-[#1f1f1f] overflow-x-auto">
+              <div className="min-w-[580px]">
               {/* Table header */}
-              <div className="grid grid-cols-[48px_1fr_120px_80px_80px_80px_80px] gap-0 border-b border-[#1f1f1f] px-4 py-2">
+              <div className="grid grid-cols-[48px_1fr_110px_70px_70px_60px_80px] gap-0 border-b border-[#1f1f1f] px-4 py-2">
                 {['RANK', 'USUARIO', 'KARMA', 'RESEÑAS', 'ÚTILES', 'PROM.', 'NIVEL'].map((h, i) => (
                   <span key={h} className={`text-[9px] font-black font-mono tracking-widest text-[#333] ${i > 1 ? 'text-right' : ''}`}>
                     {h}
@@ -189,7 +190,7 @@ export function OlimpoContent() {
                   <Link
                     key={reviewer.user_id}
                     href={`/perfil/${reviewer.user_id}`}
-                    className={`grid grid-cols-[48px_1fr_120px_80px_80px_80px_80px] gap-0 px-4 py-3 border-b border-[#1f1f1f] last:border-b-0 hover:bg-white/[0.02] transition-colors group`}
+                    className={`grid grid-cols-[48px_1fr_110px_70px_70px_60px_80px] gap-0 px-4 py-3 border-b border-[#1f1f1f] last:border-b-0 hover:bg-white/[0.02] transition-colors group`}
                   >
                     {/* Rank */}
                     <div className="flex items-center gap-1">
@@ -250,6 +251,7 @@ export function OlimpoContent() {
                   </Link>
                 );
               })}
+              </div>
             </div>
           </>
         )}

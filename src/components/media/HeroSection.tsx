@@ -49,7 +49,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
   const scoreInt  = Math.round(score * 10);
 
   return (
-    <section className="relative w-full overflow-hidden border-b border-[#1f1f1f]" style={{ height: 'clamp(480px, 60vh, 680px)' }}>
+    <section className="relative w-full overflow-hidden border-b border-[#1f1f1f]" style={{ height: 'clamp(380px, 60vh, 680px)' }}>
 
       {/* ── Full-bleed backdrop ── */}
       <div className={`absolute inset-0 transition-opacity duration-500 ${fading ? 'opacity-0' : 'opacity-100'}`}>
@@ -77,7 +77,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
 
       {/* ── Content ── */}
       <div className="absolute inset-0 flex flex-col justify-end">
-        <div className="max-w-[1400px] mx-auto w-full px-6 pb-10">
+        <div className="max-w-[1400px] mx-auto w-full px-4 sm:px-6 pb-8 sm:pb-10">
           <div className="flex items-end justify-between gap-8">
 
             {/* Left — title + meta + actions */}
@@ -95,7 +95,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
 
               {/* TITLE */}
               <h1
-                className="text-4xl sm:text-5xl xl:text-6xl font-black text-white leading-[0.9] tracking-tight mb-4 max-w-2xl"
+                className="text-3xl sm:text-4xl xl:text-6xl font-black text-white leading-[0.9] tracking-tight mb-3 sm:mb-4 max-w-2xl"
                 style={{ fontFamily: 'Space Grotesk', textShadow: '0 2px 20px rgba(0,0,0,0.8)' }}
               >
                 {item.title}<span className="text-[#FFE600]">.</span>

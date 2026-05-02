@@ -103,7 +103,7 @@ export function ProfileContent({
 
   return (
     <div className="min-h-screen pt-20 pb-16">
-      <div className="max-w-[1000px] mx-auto px-6">
+      <div className="max-w-[1000px] mx-auto px-4 sm:px-6">
 
         {/* ── HEADER ─────────────────────────────────────────── */}
         <div className="border border-[#1f1f1f] p-6 mb-1" style={{ background: '#0A0A0A' }}>

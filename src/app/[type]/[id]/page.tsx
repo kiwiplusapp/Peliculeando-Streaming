@@ -108,7 +108,7 @@ export default async function DetailPage({ params }: { params: { type: string; i
         </div>
       )}
 
-      <div className="relative z-10 max-w-[1400px] mx-auto px-6 pt-20 pb-16">
+      <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 pt-20 pb-16">
 
         {/* Breadcrumb + FILM-ID */}
         <div className="flex items-center justify-between mb-6">
@@ -135,6 +135,7 @@ export default async function DetailPage({ params }: { params: { type: string; i
 
           {/* Left — Poster */}
           <div className="hidden md:block pr-10 border-r border-[#1f1f1f]">
+
             <div className="relative aspect-[2/3] bg-[#141414] border border-[#1f1f1f] overflow-hidden w-full">
               {poster ? (
                 <Image src={poster} alt={title} fill sizes="260px" className="object-cover" />
@@ -171,6 +172,28 @@ export default async function DetailPage({ params }: { params: { type: string; i
           {/* Right — Data */}
           <div className="pl-0 md:pl-10">
 
+            {/* Mobile poster — top of content, hidden on desktop */}
+            {poster && (
+              <div className="flex md:hidden gap-4 mb-5">
+                <div className="relative w-24 shrink-0 aspect-[2/3] bg-[#141414] border border-[#1f1f1f] overflow-hidden">
+                  <Image src={poster} alt={title} fill sizes="96px" className="object-cover" />
+                </div>
+                <div className="flex flex-col justify-center gap-1.5 min-w-0">
+                  <h1 className="text-2xl font-black text-white leading-tight tracking-tight"
+                    style={{ fontFamily: 'Space Grotesk' }}>
+                    {title}<span className="text-[#FFE600]">.</span>
+                  </h1>
+                  <p className="text-[9px] font-mono text-[#333] tracking-widest">
+                    {[year, genres[0]?.name.toUpperCase(), runtime ? `${runtime}M` : numSeasons ? `${numSeasons} TEMP.` : ''].filter(Boolean).join(' · ')}
+                  </p>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black font-mono text-[#FFE600]">{score.toFixed(1)}</span>
+                    <span className="text-xs font-mono text-[#333]">/10</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Meta pills */}
             <div className="flex flex-wrap items-center gap-1.5 mb-4">
               {year && (
@@ -199,8 +222,8 @@ export default async function DetailPage({ params }: { params: { type: string; i
               )}
             </div>
 
-            {/* Title */}
-            <h1 className="text-4xl sm:text-5xl font-black text-white leading-[0.92] tracking-tight mb-2"
+            {/* Title — desktop only (mobile shows in poster block above) */}
+            <h1 className="hidden md:block text-4xl sm:text-5xl font-black text-white leading-[0.92] tracking-tight mb-2"
               style={{ fontFamily: 'Space Grotesk' }}>
               {title}<span className="text-[#FFE600]">.</span>
             </h1>
