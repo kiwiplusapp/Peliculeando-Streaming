@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { imgUrl } from '@/lib/tmdb';
-import { Plus, Globe, Lock, BookMarked, X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { toast } from '@/components/ui/Toaster';
 
 interface Collection {
@@ -35,7 +34,6 @@ export function CollectionsPage({ userId }: { userId?: string }) {
     const d = await r.json();
     setPublicCollections(d.collections || []);
   };
-
   const fetchMine = async () => {
     if (!userId) return;
     const r = await fetch(`/api/collections?user_id=${userId}`);
@@ -55,10 +53,9 @@ export function CollectionsPage({ userId }: { userId?: string }) {
       body: JSON.stringify({ title: newTitle, description: newDesc, is_public: newPublic }),
     });
     if (res.ok) {
-      toast('Colección creada ✓');
+      toast('Colección creada');
       setNewTitle(''); setNewDesc(''); setShowCreate(false);
-      await fetchMine();
-      setTab('mine');
+      await fetchMine(); setTab('mine');
     } else {
       const j = await res.json();
       if (res.status === 401) { toast('Inicia sesión', 'error'); return; }
@@ -80,126 +77,159 @@ export function CollectionsPage({ userId }: { userId?: string }) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      {/* ── HEADER ── */}
+      <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Colecciones</h1>
-          <p className="text-sm text-[#A3A3A3] mt-0.5">Playlists de películas y series creadas por la comunidad</p>
+          <p className="text-[8px] font-mono text-[#333] tracking-[0.25em] mb-1">LISTAS · COMUNIDAD</p>
+          <h1 className="text-3xl font-black text-white tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
+            Colecciones<span className="text-[#FFE600]">.</span>
+          </h1>
+          <p className="text-xs text-[#525252] mt-1 font-mono tracking-wide">
+            Playlists creadas por la comunidad
+          </p>
         </div>
         {userId && (
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black text-sm font-semibold rounded-lg transition-colors"
-          >
-            <Plus size={15} /> Nueva colección
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2 text-[10px] font-black tracking-widest text-black bg-[#FFE600] hover:opacity-90 transition-opacity"
+            style={{ fontFamily: 'Space Grotesk' }}>
+            <Plus size={13} /> NUEVA LISTA
           </button>
         )}
       </div>
 
-      {/* Create modal */}
+      {/* ── CREATE MODAL ── */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.8)' }}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)' }}
           onClick={e => { if (e.target === e.currentTarget) setShowCreate(false); }}>
-          <div className="bg-[#111111] border border-[#262626] rounded-2xl p-6 w-full max-w-md animate-fade-up">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-white">Nueva colección</h3>
-              <button onClick={() => setShowCreate(false)} className="text-[#A3A3A3] hover:text-white"><X size={18} /></button>
+          <div className="border border-[#2a2a2a] p-6 w-full max-w-md" style={{ background: '#0D0D0D' }}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <p className="text-[8px] font-mono text-[#333] tracking-widest mb-0.5">NUEVA</p>
+                <h3 className="text-sm font-black text-white tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
+                  CREAR COLECCIÓN
+                </h3>
+              </div>
+              <button onClick={() => setShowCreate(false)} className="text-[#333] hover:text-white transition-colors">
+                <X size={16} />
+              </button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <input
                 value={newTitle}
                 onChange={e => setNewTitle(e.target.value)}
-                placeholder="Nombre de la colección"
-                className="w-full bg-[#181818] border border-[#262626] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#525252] focus:outline-none focus:border-amber-500"
+                placeholder="NOMBRE DE LA COLECCIÓN"
+                className="w-full bg-[#111] border border-[#2a2a2a] px-3 py-2.5 text-sm text-white placeholder:text-[#333] focus:outline-none focus:border-[#FFE600]/30 font-mono text-[11px] tracking-wide"
               />
               <textarea
                 value={newDesc}
                 onChange={e => setNewDesc(e.target.value)}
                 placeholder="Descripción (opcional)"
                 rows={2}
-                className="w-full bg-[#181818] border border-[#262626] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#525252] focus:outline-none focus:border-amber-500 resize-none"
+                className="w-full bg-[#111] border border-[#2a2a2a] px-3 py-2.5 text-sm text-white placeholder:text-[#333] focus:outline-none focus:border-[#FFE600]/30 resize-none font-mono text-[11px]"
               />
-              <label className="flex items-center gap-2 cursor-pointer text-sm text-[#A3A3A3]">
-                <input type="checkbox" checked={newPublic} onChange={e => setNewPublic(e.target.checked)} className="accent-amber-500" />
-                Colección pública (visible para todos)
+              <label className="flex items-center gap-2 cursor-pointer text-[9px] font-mono text-[#525252] tracking-widest">
+                <input type="checkbox" checked={newPublic} onChange={e => setNewPublic(e.target.checked)} className="accent-[#FFE600]" />
+                COLECCIÓN PÚBLICA
               </label>
-              <button
-                onClick={createCollection}
-                disabled={!newTitle.trim()}
-                className="w-full py-2.5 bg-brand text-black font-bold font-medium text-sm rounded-lg hover:opacity-90 disabled:opacity-40"
-              >
-                Crear colección
+              <button onClick={createCollection} disabled={!newTitle.trim()}
+                className="w-full py-2.5 text-[10px] font-black tracking-widest text-black bg-[#FFE600] hover:opacity-90 disabled:opacity-40 transition-opacity"
+                style={{ fontFamily: 'Space Grotesk' }}>
+                CREAR
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-[#111111] p-1 rounded-xl mb-6 w-fit">
-        <button onClick={() => setTab('discover')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'discover' ? 'bg-[#262626] text-white' : 'text-[#A3A3A3] hover:text-white'}`}>
-          <Globe size={14} className="inline mr-1.5" />Descubrir
-        </button>
-        {userId && (
-          <button onClick={() => setTab('mine')} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === 'mine' ? 'bg-[#262626] text-white' : 'text-[#A3A3A3] hover:text-white'}`}>
-            <BookMarked size={14} className="inline mr-1.5" />Mis colecciones
-          </button>
-        )}
+      {/* ── TABS ── */}
+      <div className="flex items-center gap-0 mb-6 border-b border-[#1f1f1f]">
+        {[{ key: 'discover', label: 'DESCUBRIR' }, { key: 'mine', label: 'MIS LISTAS' }].map(t => (
+          (t.key === 'mine' && !userId) ? null : (
+            <button key={t.key}
+              onClick={() => setTab(t.key as 'discover' | 'mine')}
+              className={`px-4 py-2.5 text-[10px] font-black tracking-widest border-b-2 -mb-px transition-colors ${
+                tab === t.key ? 'text-[#FFE600] border-[#FFE600]' : 'text-[#333] border-transparent hover:text-[#525252]'
+              }`}
+              style={{ fontFamily: 'Space Grotesk' }}>
+              {t.label}
+            </button>
+          )
+        ))}
       </div>
 
+      {/* ── GRID ── */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => <div key={i} className="skeleton aspect-[3/4] rounded-xl" />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-0 border border-[#1f1f1f]">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="aspect-[3/4] bg-[#141414] border-r border-b border-[#1f1f1f] animate-pulse" />
+          ))}
         </div>
       ) : displayedCollections.length === 0 ? (
-        <div className="text-center py-16 text-[#525252]">
-          <BookMarked size={40} className="mx-auto mb-3 opacity-40" />
-          <p className="font-medium text-[#A3A3A3]">{tab === 'mine' ? 'Aún no tienes colecciones' : 'No hay colecciones públicas'}</p>
+        <div className="border border-[#1f1f1f] px-6 py-16 text-center">
+          <p className="text-[10px] font-mono text-[#333] tracking-widest">
+            {tab === 'mine' ? 'SIN COLECCIONES AÚN' : 'SIN COLECCIONES PÚBLICAS'}
+          </p>
           {tab === 'mine' && userId && (
-            <button onClick={() => setShowCreate(true)} className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold text-sm rounded-lg transition-colors">
-              Crear la primera
+            <button onClick={() => setShowCreate(true)}
+              className="mt-4 px-4 py-2 text-[10px] font-black tracking-widest text-black bg-[#FFE600] hover:opacity-90 transition-opacity"
+              style={{ fontFamily: 'Space Grotesk' }}>
+              CREAR LA PRIMERA
             </button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-          {displayedCollections.map(col => (
-            <div key={col.id} className="relative group">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 border border-[#1f1f1f]">
+          {displayedCollections.map((col, idx) => (
+            <div key={col.id} className="relative group border-r border-b border-[#1f1f1f] last:border-r-0">
               <Link href={`/colecciones/${col.id}`}
-                className="block bg-[#111111] border border-[#262626] rounded-xl overflow-hidden hover:border-amber-500/40 transition-colors">
-                <div className="relative aspect-[16/9] bg-[#181818] overflow-hidden">
+                className="block hover:bg-white/[0.02] transition-colors">
+                {/* Cover */}
+                <div className="relative aspect-[16/9] bg-[#141414] overflow-hidden">
                   {col.cover_poster ? (
-                    <Image src={`https://image.tmdb.org/t/p/w500${col.cover_poster}`} alt={col.title} fill sizes="300px" className="object-cover" />
+                    <Image
+                      src={`https://image.tmdb.org/t/p/w500${col.cover_poster}`}
+                      alt={col.title}
+                      fill sizes="300px"
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <BookMarked size={32} className="text-[#333333]" />
+                    <div className="absolute inset-0 flex items-center justify-center"
+                      style={{ background: 'repeating-linear-gradient(45deg, #0A0A0A, #0A0A0A 4px, #141414 4px, #141414 8px)' }}>
+                      <span className="text-[#1f1f1f] text-2xl font-black font-mono">
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                   {!col.is_public && (
-                    <div className="absolute top-2 right-2 p-1 bg-black/60 rounded-lg">
-                      <Lock size={12} className="text-[#A3A3A3]" />
+                    <div className="absolute top-2 right-2">
+                      <span className="text-[7px] font-mono tracking-widest bg-black/80 text-[#525252] px-1.5 py-0.5">
+                        PRIVADA
+                      </span>
                     </div>
                   )}
                 </div>
+
+                {/* Meta */}
                 <div className="p-3">
-                  <p className="font-semibold text-white text-sm line-clamp-1">{col.title}</p>
+                  <p className="text-[11px] font-bold text-white line-clamp-1 group-hover:text-[#FFE600] transition-colors">
+                    {col.title.toUpperCase()}
+                  </p>
                   {col.description && (
-                    <p className="text-xs text-[#A3A3A3] mt-0.5 line-clamp-2">{col.description}</p>
+                    <p className="text-[9px] text-[#525252] mt-0.5 line-clamp-1">{col.description}</p>
                   )}
-                  <div className="flex items-center gap-2 mt-2 text-xs text-[#525252]">
-                    <span>{col.item_count} títulos</span>
-                    <span>·</span>
-                    <span>@{col.username}</span>
+                  <div className="flex items-center justify-between mt-2 text-[8px] font-mono tracking-widest">
+                    <span className="text-[#333]">{col.item_count} TÍTULOS</span>
+                    <span className="text-[#1f1f1f]">@{col.username}</span>
                   </div>
                 </div>
               </Link>
 
+              {/* Delete button for mine */}
               {tab === 'mine' && (
-                <button
-                  onClick={() => deleteCollection(col.id)}
-                  className="absolute top-2 right-2 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center text-[#A3A3A3] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                >
-                  <X size={12} />
+                <button onClick={() => deleteCollection(col.id)}
+                  className="absolute top-2 left-2 w-5 h-5 flex items-center justify-center text-[#333] hover:text-red-400 bg-black/60 opacity-0 group-hover:opacity-100 transition-all border border-[#2a2a2a]">
+                  <X size={9} />
                 </button>
               )}
             </div>
