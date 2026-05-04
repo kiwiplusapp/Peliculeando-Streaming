@@ -165,6 +165,7 @@ export function Navbar() {
                         { href: '/mi-lista',    label: 'MI LISTA' },
                         { href: '/mis-resenas', label: 'MIS RESEÑAS' },
                         { href: '/colecciones', label: 'COLECCIONES' },
+                        { href: '/ajustes',     label: 'AJUSTES' },
                       ].map(item => (
                         <Link key={item.href} href={item.href} onClick={() => setUserMenuOpen(false)}
                           className="block px-4 py-2.5 text-[10px] font-semibold tracking-widest text-[#737373] hover:text-white hover:bg-white/[0.03] transition-colors"

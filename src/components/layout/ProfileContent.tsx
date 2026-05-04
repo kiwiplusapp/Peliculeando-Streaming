@@ -157,6 +157,10 @@ export function ProfileContent({
                   className="px-3 py-1.5 text-[10px] font-semibold tracking-widest text-[#A3A3A3] border border-[#2a2a2a] hover:border-[#525252] hover:text-white transition-colors">
                   ≡ RESEÑAS
                 </Link>
+                <Link href="/ajustes"
+                  className="px-3 py-1.5 text-[10px] font-semibold tracking-widest text-[#A3A3A3] border border-[#2a2a2a] hover:border-[#525252] hover:text-white transition-colors">
+                  ⚙ AJUSTES
+                </Link>
               </div>
             </div>
 
