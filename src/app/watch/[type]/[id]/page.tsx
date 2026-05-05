@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { useXPNotification } from '@/components/gamification/XPNotification';
+import { AdInterstitial } from '@/components/ui/AdInterstitial';
 
 interface Episode {
   episode_number: number;
@@ -16,33 +16,35 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [season, setSeason] = useState(() => Number(searchParams.get('s')) || 1);
+  const [season, setSeason]   = useState(() => Number(searchParams.get('s')) || 1);
   const [episode, setEpisode] = useState(() => Number(searchParams.get('e')) || 1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [seasons, setSeasons] = useState(1);
-  const [title, setTitle] = useState('');
+  const [title, setTitle]     = useState('');
   const [posterPath, setPosterPath] = useState<string | null>(null);
-  const [ready, setReady] = useState(false);
-  const saveRef = useRef<NodeJS.Timeout | null>(null);
-  const xpNotif = useXPNotification();
+  const [ready, setReady]     = useState(false);
+
+  // Ad interstitial state
+  const [showAd, setShowAd]   = useState(true);
+
+  // XP tracking
+  const xpNotif       = useXPNotification();
+  const startTimeRef  = useRef<number>(Date.now());
+  const xpFiredRef    = useRef(false);
   const isTV = type === 'tv';
 
-  // Load saved progress and metadata on mount
+  // Load saved progress on mount
   useEffect(() => {
-    // Fetch saved progress
     fetch(`/api/progress?tmdb_id=${id}&media_type=${type}`)
       .then(r => r.json())
       .then(d => {
         if (d?.season_number && !searchParams.get('s')) setSeason(Number(d.season_number));
         if (d?.episode_number && !searchParams.get('e')) setEpisode(Number(d.episode_number));
-        if (d?.title) setTitle(d.title);
+        if (d?.title)       setTitle(d.title);
         if (d?.poster_path) setPosterPath(d.poster_path);
       })
       .catch(() => {})
       .finally(() => setReady(true));
-
-    // Fetch basic media info for title/poster if not in progress
-    fetch(`/api/personas/${id}`).catch(() => {});
   }, [id, type, searchParams]);
 
   // Fetch episode list when season changes (TV only)
@@ -54,98 +56,134 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
       .catch(() => {});
   }, [isTV, id, season]);
 
-  // Initialize total seasons from query param
+  // Initialise total seasons
   useEffect(() => {
     if (!isTV) return;
     const s = Number(searchParams.get('seasons'));
     if (s > 0) setSeasons(s);
   }, [isTV, searchParams]);
 
-  const firstSave = useRef(true);
+  // ── Save progress ──────────────────────────────────────────────────────────
   const saveProgress = useCallback(() => {
     if (!ready) return;
     fetch('/api/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tmdb_id: Number(id),
-        media_type: type,
-        season_number: season,
-        episode_number: episode,
+        tmdb_id: Number(id), media_type: type,
+        season_number: season, episode_number: episode,
         progress_seconds: 0,
-        title: title || null,
-        poster_path: posterPath || null,
+        title: title || null, poster_path: posterPath || null,
       }),
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(() => {
-        // Show XP toast on first save of a session
-        if (firstSave.current) {
-          firstSave.current = false;
-          const action = type === 'tv' ? 'watch_episode' : 'watch_movie';
-          const xp = type === 'tv' ? 10 : 25;
-          xpNotif.showXP(xp, xp, []);
-        }
-      })
-      .catch(() => {});
-  }, [id, type, season, episode, ready, title, posterPath, xpNotif]);
+    }).catch(() => {});
+  }, [id, type, season, episode, ready, title, posterPath]);
 
-  // Auto-save every 30s
+  // Auto-save every 30 s
+  const saveRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
     if (!ready) return;
     saveProgress();
-    saveRef.current = setInterval(saveProgress, 30000);
+    saveRef.current = setInterval(saveProgress, 30_000);
     return () => { if (saveRef.current) clearInterval(saveRef.current); };
   }, [saveProgress, ready]);
 
-  // Save on page unload / navigation
+  // ── Award XP on completion (once per film, min watch time) ────────────────
+  const awardCompletionXP = useCallback(() => {
+    if (xpFiredRef.current) return;
+    const minutesWatched = (Date.now() - startTimeRef.current) / 60_000;
+    const minMinutes = isTV ? 10 : 20;
+    if (minutesWatched < minMinutes) return;
+
+    xpFiredRef.current = true;
+    fetch('/api/xp/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tmdb_id: Number(id),
+        media_type: type,
+        minutes_watched: Math.round(minutesWatched),
+      }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok && !d.alreadyAwarded && d.xpGained > 0) {
+          xpNotif.showXP(d.xpGained, d.xpGained, []);
+        }
+      })
+      .catch(() => {});
+  }, [id, type, isTV, xpNotif]);
+
+  // Fire XP on page leave / navigation (covers browser back, tab close, etc.)
   useEffect(() => {
-    const handler = () => saveProgress();
+    const handler = () => {
+      saveProgress();
+      awardCompletionXP();
+    };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [saveProgress]);
+  }, [saveProgress, awardCompletionXP]);
 
+  // Also fire XP when episode changes (user finished one and moved to next)
+  const prevEpisode = useRef(episode);
+  useEffect(() => {
+    if (isTV && episode !== prevEpisode.current) {
+      awardCompletionXP();
+      xpFiredRef.current = false; // allow XP again for next episode
+      startTimeRef.current = Date.now();
+      prevEpisode.current = episode;
+    }
+  }, [episode, isTV, awardCompletionXP]);
+
+  // ── Back button ────────────────────────────────────────────────────────────
   const handleBack = () => {
     saveProgress();
+    awardCompletionXP();
     router.back();
   };
 
   const src = isTV
-    ? `https://vaplayer.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&primaryColor=f59e0b`
-    : `https://vaplayer.ru/embed/movie?tmdb=${id}&primaryColor=f59e0b`;
+    ? `https://vaplayer.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&primaryColor=FFE600`
+    : `https://vaplayer.ru/embed/movie?tmdb=${id}&primaryColor=FFE600`;
 
-  const HEADER_H = 52;
+  const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;
-  const FOOTER_H = hasEpisodes ? 56 : 0;
+  const FOOTER_H  = hasEpisodes ? 56 : 0;
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-      {/* Header — plain DOM button with router.back(), NO iframe interaction needed */}
+
+      {/* ── Ad Interstitial (shows before player becomes interactive) ── */}
+      {showAd && (
+        <AdInterstitial
+          slot="5555555555"
+          countdownSeconds={5}
+          onClose={() => setShowAd(false)}
+        />
+      )}
+
+      {/* ── Header ── */}
       <div
-        className="shrink-0 flex items-center justify-between px-4 bg-[#0d0d0d] border-b border-[#1f1f1f]"
-        style={{ height: HEADER_H }}
-      >
+        className="shrink-0 flex items-center justify-between px-4 bg-[#0A0A0A] border-b border-[#1f1f1f]"
+        style={{ height: HEADER_H }}>
         <button
           onClick={handleBack}
-          className="flex items-center gap-2 text-[#A3A3A3] hover:text-white transition-colors group"
-        >
-          <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 group-hover:bg-white/10 border border-white/10 transition-colors">
+          className="flex items-center gap-2 text-[#A3A3A3] hover:text-white transition-colors group">
+          <span className="w-8 h-8 flex items-center justify-center bg-white/5 group-hover:bg-white/10 border border-white/10 transition-colors">
             <ArrowLeft size={16} />
           </span>
           <span className="text-sm font-medium hidden sm:block">{title || 'Volver'}</span>
         </button>
 
         {isTV && (
-          <span className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-full font-medium">
+          <span className="text-[10px] font-black font-mono tracking-widest text-[#FFE600] border border-[#FFE600]/30 px-2.5 py-1">
             T{season} · E{episode}
           </span>
         )}
 
-        {/* Invisible spacer to keep title centered */}
         <div className="w-8 sm:w-24" />
       </div>
 
-      {/* Player */}
+      {/* ── Player ── */}
       <div className="flex-1 relative">
         {ready && (
           <iframe
@@ -160,36 +198,32 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
         )}
       </div>
 
-      {/* Episode bar */}
+      {/* ── Episode bar (TV) ── */}
       {hasEpisodes && (
         <div
-          className="shrink-0 flex items-center gap-2 px-4 bg-[#0d0d0d] border-t border-[#1f1f1f] overflow-x-auto scrollbar-none"
-          style={{ height: FOOTER_H }}
-        >
+          className="shrink-0 flex items-center gap-2 px-4 bg-[#0A0A0A] border-t border-[#1f1f1f] overflow-x-auto scrollbar-none"
+          style={{ height: FOOTER_H }}>
           {Array.from({ length: Math.min(seasons, 20) }, (_, i) => i + 1).map(s => (
-            <button
-              key={s}
+            <button key={s}
               onClick={() => { setSeason(s); setEpisode(1); }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg shrink-0 transition-colors ${
+              className={`px-3 py-1.5 text-[10px] font-black tracking-widest shrink-0 transition-colors border ${
                 s === season
-                  ? 'bg-amber-500 text-black font-bold'
-                  : 'bg-[#1a1a1a] text-[#A3A3A3] hover:text-white border border-[#333333]'
+                  ? 'bg-[#FFE600] text-black border-[#FFE600]'
+                  : 'bg-[#141414] text-[#525252] hover:text-white border-[#1f1f1f] hover:border-[#333]'
               }`}
-            >
+              style={{ fontFamily: 'Space Grotesk' }}>
               T{s}
             </button>
           ))}
-          <div className="w-px h-5 bg-[#333333] shrink-0 mx-1" />
+          <div className="w-px h-6 bg-[#1f1f1f] mx-1 shrink-0" />
           {episodes.map(ep => (
-            <button
-              key={ep.episode_number}
+            <button key={ep.episode_number}
               onClick={() => setEpisode(ep.episode_number)}
-              className={`px-3 py-1.5 text-xs rounded-lg shrink-0 transition-colors whitespace-nowrap ${
+              className={`px-3 py-1.5 text-[10px] font-semibold shrink-0 transition-colors border ${
                 ep.episode_number === episode
-                  ? 'bg-amber-500 text-black font-bold'
-                  : 'bg-[#1a1a1a] text-[#A3A3A3] hover:text-white border border-[#333333]'
-              }`}
-            >
+                  ? 'bg-[#FFE600] text-black border-[#FFE600]'
+                  : 'bg-[#141414] text-[#525252] hover:text-white border-[#1f1f1f] hover:border-[#333]'
+              }`}>
               {ep.episode_number}. {ep.name}
             </button>
           ))}

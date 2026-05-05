@@ -1,8 +1,23 @@
 import { query } from '@/lib/db';
 import { XP_ACTIONS, XPAction, ACHIEVEMENTS, AchievementStats, getLevelForXP } from '@/lib/xp';
 
-export async function awardXP(userId: number, action: XPAction, refId?: number): Promise<void> {
+/**
+ * Award XP for an action.
+ * If refId is provided (e.g. TMDB ID for watch_movie/watch_episode),
+ * the award is idempotent — won't fire a second time for the same film.
+ */
+export async function awardXP(userId: number, action: XPAction, refId?: number): Promise<{ xpGained: number; alreadyAwarded: boolean }> {
   const xpGained = XP_ACTIONS[action];
+
+  // Idempotency check: one XP event per (user, action, ref_id)
+  if (refId !== undefined) {
+    const [existing] = await query<{ id: number }>(
+      `SELECT id FROM user_xp_events WHERE user_id = $1 AND action = $2 AND ref_id = $3 LIMIT 1`,
+      [userId, action, refId],
+    ).catch(() => []);
+    if (existing) return { xpGained: 0, alreadyAwarded: true };
+  }
+
   await query(
     `INSERT INTO user_xp_events (user_id, action, xp_gained, ref_id) VALUES ($1, $2, $3, $4)`,
     [userId, action, xpGained, refId ?? null],
@@ -15,6 +30,7 @@ export async function awardXP(userId: number, action: XPAction, refId?: number):
   await query(`UPDATE users SET level = $1 WHERE id = $2`, [newLevel, userId]);
 
   await checkAndUnlockAchievements(userId);
+  return { xpGained, alreadyAwarded: false };
 }
 
 async function checkAndUnlockAchievements(userId: number): Promise<void> {
@@ -64,9 +80,6 @@ async function checkAndUnlockAchievements(userId: number): Promise<void> {
       `INSERT INTO user_xp_events (user_id, action, xp_gained) VALUES ($1, 'achievement_bonus', $2)`,
       [userId, ach.xpReward],
     );
-    await query(
-      `UPDATE users SET xp_total = xp_total + $1 WHERE id = $2`,
-      [ach.xpReward, userId],
-    );
+    await query(`UPDATE users SET xp_total = xp_total + $1 WHERE id = $2`, [ach.xpReward, userId]);
   }
 }

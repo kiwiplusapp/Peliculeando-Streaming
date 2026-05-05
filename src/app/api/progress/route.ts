@@ -53,11 +53,6 @@ export async function POST(req: NextRequest) {
       [session.sub, tmdb_id, media_type, season_number || 1, episode_number || 1, progress_seconds || 0, title || null, poster_path || null]
     );
     // xmax = '0' means INSERT (new row), non-zero means UPDATE
-    const isNew = result?.xmax === '0';
-    if (isNew) {
-      const action = media_type === 'tv' ? 'watch_episode' : 'watch_movie';
-      awardXP(Number(session.sub), action, tmdb_id).catch(() => {});
-    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: 'Error' }, { status: 500 });
