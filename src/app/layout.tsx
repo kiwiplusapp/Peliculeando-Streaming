@@ -21,6 +21,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es">
       <head>
+        {/* Restore theme before first paint — avoids flash */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          try {
+            var t = localStorage.getItem('pel_theme');
+            if (t && t !== 'dark') document.documentElement.setAttribute('data-theme', t);
+          } catch(e) {}
+        `}} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

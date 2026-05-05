@@ -1,30 +1,34 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { X, Zap } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface AdBannerProps {
   slot?: string;
   format?: 'auto' | 'horizontal' | 'rectangle';
   className?: string;
+  label?: string;
 }
 
 declare global {
-  interface Window {
-    adsbygoogle: unknown[];
-  }
+  interface Window { adsbygoogle: unknown[]; }
 }
 
-export function AdBanner({ slot = '1234567890', format = 'auto', className = '' }: AdBannerProps) {
-  const adRef = useRef<HTMLModElement>(null);
-  const pushed = useRef(false);
-  const [dismissed, setDismissed] = useState(false);
+export function AdBanner({
+  slot = '1234567890',
+  format = 'auto',
+  className = '',
+  label = 'PUBLICIDAD',
+}: AdBannerProps) {
+  const adRef    = useRef<HTMLModElement>(null);
+  const pushed   = useRef(false);
+  const [dismissed,  setDismissed]  = useState(false);
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch('/api/subscription')
       .then(r => r.json())
-      .then(d => setSubscribed(d.active))
+      .then(d => setSubscribed(Boolean(d.active)))
       .catch(() => setSubscribed(false));
   }, []);
 
@@ -37,45 +41,43 @@ export function AdBanner({ slot = '1234567890', format = 'auto', className = '' 
     }
   }, [subscribed]);
 
+  // Hide while loading, when subscribed, or when dismissed
   if (subscribed === null || subscribed === true || dismissed) return null;
 
   return (
-    <div className={`relative bg-[#111111] border border-[#262626] rounded-xl overflow-hidden ${className}`}>
-      <button
-        onClick={() => setDismissed(true)}
-        className="absolute top-2 right-2 z-10 w-5 h-5 flex items-center justify-center bg-black/60 rounded-full text-[#525252] hover:text-white transition-colors"
-        aria-label="Cerrar anuncio"
-      >
-        <X size={11} />
-      </button>
-
-      <div className="px-3 pt-1.5 pb-0.5">
-        <span className="text-[10px] text-[#525252] uppercase tracking-wider font-medium">Publicidad</span>
+    <div className={`relative border border-[#1f1f1f] bg-[#0A0A0A] overflow-hidden ${className}`}>
+      {/* Label row */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1f1f1f]">
+        <span className="text-[8px] font-black font-mono text-[#2a2a2a] tracking-[0.25em]">
+          {label}
+        </span>
+        <div className="flex items-center gap-3">
+          <a
+            href="#"
+            onClick={e => { e.preventDefault(); document.dispatchEvent(new CustomEvent('open-subscription')); }}
+            className="text-[8px] font-black font-mono tracking-[0.2em] text-[#FFE600]/60 hover:text-[#FFE600] transition-colors"
+            style={{ fontFamily: 'Space Grotesk' }}>
+            SIN ANUNCIOS →
+          </a>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-[#2a2a2a] hover:text-[#525252] transition-colors"
+            aria-label="Cerrar">
+            <X size={10} />
+          </button>
+        </div>
       </div>
 
+      {/* AdSense unit */}
       <ins
         ref={adRef}
         className="adsbygoogle block"
-        style={{ display: 'block' }}
+        style={{ display: 'block', minHeight: '90px' }}
         data-ad-client="ca-pub-6030100198055823"
         data-ad-slot={slot}
         data-ad-format={format}
         data-full-width-responsive="true"
       />
-
-      <div className="flex items-center justify-center gap-2 py-2 border-t border-[#1A1A1A]">
-        <Zap size={11} className="text-amber-400" />
-        <a
-          href="#premium"
-          className="text-[11px] text-amber-400 hover:text-amber-300 font-medium transition-colors"
-          onClick={e => {
-            e.preventDefault();
-            document.dispatchEvent(new CustomEvent('open-subscription'));
-          }}
-        >
-          Eliminar anuncios — Hazte Premium
-        </a>
-      </div>
     </div>
   );
 }

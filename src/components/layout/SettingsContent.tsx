@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 import { ChevronRight, Check, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -91,6 +91,14 @@ export function SettingsContent({ initialUser }: { initialUser: UserSettings | n
 
   /* ── Apariencia ── */
   const [activeTheme, setActiveTheme] = useState('dark');
+
+  // Restore saved theme on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pel_theme');
+      if (saved) setActiveTheme(saved);
+    } catch {}
+  }, []);
 
   /* ── Helpers ── */
   const showToast = (msg: string, ok: boolean) => {
@@ -379,6 +387,13 @@ export function SettingsContent({ initialUser }: { initialUser: UserSettings | n
     </div>
   );
 
+  const applyTheme = (id: string) => {
+    setActiveTheme(id);
+    try { localStorage.setItem('pel_theme', id); } catch {}
+    if (id === 'dark') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', id);
+  };
+
   /* ── 05 APARIENCIA ── */
   const renderApariencia = () => (
     <div className="space-y-8 max-w-lg">
@@ -388,7 +403,7 @@ export function SettingsContent({ initialUser }: { initialUser: UserSettings | n
           {THEMES.map(t => {
             const isActive = activeTheme === t.id;
             return (
-              <button key={t.id} onClick={() => setActiveTheme(t.id)}
+              <button key={t.id} onClick={() => applyTheme(t.id)}
                 className={`p-3 border transition-colors ${isActive ? 'border-[#FFE600]' : 'border-[#1f1f1f] hover:border-[#333]'}`}
                 style={{ background: t.bg }}>
                 <div className="w-full h-8 mb-2 relative overflow-hidden"

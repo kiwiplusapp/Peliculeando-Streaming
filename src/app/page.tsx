@@ -4,6 +4,7 @@ import { Carousel } from '@/components/media/Carousel';
 import { RecommendationsSection } from '@/components/media/RecommendationsSection';
 import { WeeklyTopSection } from '@/components/media/WeeklyTopSection';
 import { ContinueWatchingSection } from '@/components/media/ContinueWatchingSection';
+import { AdBanner } from '@/components/ui/AdBanner';
 import { getSession } from '@/lib/auth';
 
 export const revalidate = 300; // 5 min cache
@@ -30,6 +31,11 @@ export default async function HomePage() {
 
         <WeeklyTopSection />
 
+        {/* ── Ad slot between sections ── */}
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 my-6">
+          <AdBanner slot="1234567890" format="horizontal" />
+        </div>
+
         <Carousel
           title="Tendencias de la semana"
           items={trendingRest}
@@ -54,6 +60,11 @@ export default async function HomePage() {
           items={topMovies.results}
           href="/peliculas"
         />
+
+        {/* ── Footer ad slot ── */}
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 mt-6 mb-4">
+          <AdBanner slot="0987654321" format="horizontal" />
+        </div>
       </div>
     </>
   );

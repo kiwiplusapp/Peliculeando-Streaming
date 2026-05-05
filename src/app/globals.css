@@ -10,7 +10,7 @@
 html { scroll-behavior: smooth; }
 
 body {
-  background: #0A0A0A;
+  background: var(--bg);
   color: #F5F5F5;
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -41,10 +41,27 @@ h1, h2, .font-display {
   --border2: #2a2a2a;
 }
 
+/* ── Themes ─────────────────────────────────────────────────────── */
+[data-theme="darker"] {
+  --bg: #000000;
+  --surface: #060606;
+  --card: #0A0A0A;
+  --border: #1a1a1a;
+  --border2: #222222;
+}
+
+[data-theme="midnight"] {
+  --bg: #08081a;
+  --surface: #0c0c22;
+  --card: #10102a;
+  --border: #1e1e38;
+  --border2: #28284a;
+}
+
 /* ── Scrollbar ──────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: #0A0A0A; }
-::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--yellow); }
 
 .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
