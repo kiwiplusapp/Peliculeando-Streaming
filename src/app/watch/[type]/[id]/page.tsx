@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useXPNotification } from '@/components/gamification/XPNotification';
-import { AdInterstitial } from '@/components/ui/AdInterstitial';
 
 interface Episode {
   episode_number: number;
@@ -23,9 +22,6 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   const [title, setTitle]     = useState('');
   const [posterPath, setPosterPath] = useState<string | null>(null);
   const [ready, setReady]     = useState(false);
-
-  // Ad interstitial state
-  const [showAd, setShowAd]   = useState(true);
 
   // XP tracking
   const xpNotif       = useXPNotification();
@@ -151,15 +147,6 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
 
   return (
     <div className="fixed inset-0 bg-black flex flex-col">
-
-      {/* ── Ad Interstitial (shows before player becomes interactive) ── */}
-      {showAd && (
-        <AdInterstitial
-          slot="5555555555"
-          countdownSeconds={5}
-          onClose={() => setShowAd(false)}
-        />
-      )}
 
       {/* ── Header ── */}
       <div
