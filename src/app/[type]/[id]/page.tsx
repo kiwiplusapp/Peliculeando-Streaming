@@ -373,7 +373,7 @@ export default async function DetailPage({ params }: { params: { type: string; i
                     <div className="w-[72px] h-[72px] bg-[#141414] border border-[#1f1f1f] group-hover:border-[#FFE600]/30 transition-colors mb-1.5 overflow-hidden">
                       {person.profile_path ? (
                         <Image
-                          src={`https://image.tmdb.org/t/p/w185${person.profile_path}`}
+                          src={imgUrl(person.profile_path, 'w185')!}
                           alt={person.name} width={72} height={72}
                           className="object-cover object-top w-full h-full"
                         />

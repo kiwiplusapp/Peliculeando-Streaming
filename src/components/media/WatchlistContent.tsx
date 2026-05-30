@@ -20,6 +20,10 @@ export function WatchlistContent() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter]   = useState<'all' | 'movie' | 'tv'>('all');
   const [removing, setRemoving] = useState<number | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  const handleImgError = (id: number) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(id); return n; });
+  };
 
   useEffect(() => {
     fetch('/api/watchlist')
@@ -119,8 +123,8 @@ export function WatchlistContent() {
             <div key={item.id} className="group relative">
               <Link href={`/${item.media_type}/${item.tmdb_id}`}>
                 <div className="relative aspect-[2/3] overflow-hidden bg-[#141414] border border-[#1f1f1f] group-hover:border-[#FFE600]/30 transition-colors">
-                  {poster ? (
-                    <Image src={poster} alt={item.title} fill sizes="160px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  {poster && !failedImages.has(item.id) ? (
+                    <Image src={poster} alt={item.title} fill sizes="160px" className="object-cover group-hover:scale-105 transition-transform duration-500" onError={() => handleImgError(item.id)} />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-[#333]">
                       <Film size={20} />

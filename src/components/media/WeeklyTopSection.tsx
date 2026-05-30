@@ -18,6 +18,10 @@ interface TopItem {
 export function WeeklyTopSection() {
   const [items, setItems] = useState<TopItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const handleImgError = (key: string) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(key); return n; });
+  };
 
   useEffect(() => {
     fetch('/api/top-semanal')
@@ -57,6 +61,7 @@ export function WeeklyTopSection() {
             {items.slice(0, 10).map((item, i) => {
               const poster = imgUrl(item.poster_path, 'w342');
               const isTop3 = i < 3;
+              const imgKey = `${item.tmdb_id}-${item.media_type}`;
               return (
                 <Link
                   key={`${item.tmdb_id}-${item.media_type}`}
@@ -64,10 +69,11 @@ export function WeeklyTopSection() {
                   className="group relative"
                 >
                   <div className="relative aspect-[2/3] bg-[#141414] border border-[#1f1f1f] overflow-hidden group-hover:border-[#FFE600]/30 transition-all duration-200">
-                    {poster ? (
+                    {poster && !failedImages.has(imgKey) ? (
                       <Image
                         src={poster} alt={item.title} fill sizes="200px"
                         className="object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                        onError={() => handleImgError(imgKey)}
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center text-[#1f1f1f]">

@@ -48,6 +48,10 @@ export function DecisionHelper() {
   const [tipo, setTipo] = useState('movie');
   const [results, setResults] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const handleImgError = (key: string) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(key); return n; });
+  };
 
   const handleSubmit = async () => {
     if (!mood) return;
@@ -89,16 +93,17 @@ export function DecisionHelper() {
             const score = item.vote_average || 0;
             const year = item.release_date?.slice(0, 4);
             const scoreColor = score >= 7 ? '#10b981' : score >= 5 ? '#f59e0b' : '#ef4444';
+            const imgKey = `${item.tmdb_id}-${item.media_type}`;
 
             return (
               <Link
-                key={`${item.tmdb_id}-${item.media_type}`}
+                key={imgKey}
                 href={`/${item.media_type}/${item.tmdb_id}`}
                 className="group bg-[#111111] border border-[#262626] rounded-xl overflow-hidden hover:border-amber-500/40 transition-colors"
               >
                 <div className="relative aspect-[2/3] overflow-hidden">
-                  {poster ? (
-                    <Image src={poster} alt={item.title} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                  {poster && !failedImages.has(imgKey) ? (
+                    <Image src={poster} alt={item.title} fill sizes="200px" className="object-cover group-hover:scale-105 transition-transform duration-500" onError={() => handleImgError(imgKey)} />
                   ) : (
                     <div className="absolute inset-0 bg-[#181818]" />
                   )}

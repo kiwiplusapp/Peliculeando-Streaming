@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Plus, X } from 'lucide-react';
 import { toast } from '@/components/ui/Toaster';
+import { imgUrl } from '@/lib/tmdb';
 
 interface Collection {
   id: number;
@@ -28,6 +29,10 @@ export function CollectionsPage({ userId }: { userId?: string }) {
   const [newTitle, setNewTitle] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newPublic, setNewPublic] = useState(true);
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
+  const handleImgError = useCallback((id: number) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(id); return n; });
+  }, []);
 
   const fetchPublic = async () => {
     const r = await fetch('/api/collections?public=1');
@@ -185,12 +190,13 @@ export function CollectionsPage({ userId }: { userId?: string }) {
                 className="block hover:bg-white/[0.02] transition-colors">
                 {/* Cover */}
                 <div className="relative aspect-[16/9] bg-[#141414] overflow-hidden">
-                  {col.cover_poster ? (
+                  {col.cover_poster && !failedImages.has(col.id) ? (
                     <Image
-                      src={`https://image.tmdb.org/t/p/w500${col.cover_poster}`}
+                      src={imgUrl(col.cover_poster, 'w500')!}
                       alt={col.title}
                       fill sizes="300px"
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={() => handleImgError(col.id)}
                     />
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center"

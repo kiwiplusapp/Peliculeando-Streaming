@@ -5,9 +5,14 @@ import Link from 'next/link';
 import { Play } from 'lucide-react';
 import { imgUrl } from '@/lib/tmdb';
 import { useWatchProgress } from './WatchProgressContext';
+import { useState, useCallback } from 'react';
 
 export function ContinueWatchingSection() {
   const { progress } = useWatchProgress();
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const handleImgError = useCallback((key: string) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(key); return n; });
+  }, []);
 
   const items = Array.from(progress.values())
     .filter(i => i.title)
@@ -35,7 +40,12 @@ export function ContinueWatchingSection() {
         {items.map(item => {
           const poster = imgUrl(item.poster_path, 'w342');
           const isTV = item.media_type === 'tv';
-          const href = `/watch/${item.media_type}/${item.tmdb_id}${item.season_number ? `?s=${item.season_number}&e=${item.episode_number}` : ''}`;
+          const imgKey = `${item.tmdb_id}-${item.media_type}`;
+          const watchParams = new URLSearchParams();
+          if (item.season_number) { watchParams.set('s', String(item.season_number)); watchParams.set('e', String(item.episode_number)); }
+          if (item.title) watchParams.set('title', item.title);
+          if (item.poster_path) watchParams.set('poster', item.poster_path);
+          const href = `/watch/${item.media_type}/${item.tmdb_id}?${watchParams.toString()}`;
 
           return (
             <Link
@@ -45,10 +55,11 @@ export function ContinueWatchingSection() {
             >
               {/* Poster */}
               <div className="relative aspect-[2/3] bg-[#141414] border border-[#1f1f1f] overflow-hidden transition-all duration-200 group-hover:border-[#FFE600]/30">
-                {poster ? (
+                {poster && !failedImages.has(imgKey) ? (
                   <Image
                     src={poster} alt={item.title || ''} fill sizes="170px"
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    onError={() => handleImgError(imgKey)}
                   />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-[#1f1f1f]">

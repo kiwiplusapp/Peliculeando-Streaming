@@ -19,8 +19,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   const [episode, setEpisode] = useState(() => Number(searchParams.get('e')) || 1);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [seasons, setSeasons] = useState(1);
-  const [title, setTitle]     = useState('');
-  const [posterPath, setPosterPath] = useState<string | null>(null);
+  const [title, setTitle]     = useState(() => searchParams.get('title') || '');
+  const [posterPath, setPosterPath] = useState<string | null>(() => searchParams.get('poster'));
   const [ready, setReady]     = useState(false);
 
   // XP tracking

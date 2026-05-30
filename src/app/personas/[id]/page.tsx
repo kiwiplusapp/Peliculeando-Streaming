@@ -70,7 +70,7 @@ export default async function PersonPage({ params }: { params: { id: string } })
             <div className="w-40 h-40 sm:w-52 sm:h-52 rounded-2xl overflow-hidden bg-[#181818] border border-[#262626] shadow-2xl">
               {profilePath ? (
                 <Image
-                  src={`https://image.tmdb.org/t/p/w300${profilePath}`}
+                  src={imgUrl(profilePath, 'w300')!}
                   alt={name}
                   width={208} height={208}
                   className="object-cover w-full h-full"

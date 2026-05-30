@@ -19,6 +19,10 @@ interface TopItem {
 export function WeeklyTopContent() {
   const [items, setItems] = useState<TopItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const handleImgError = (key: string) => {
+    setFailedImages(prev => { const n = new Set(prev); n.add(key); return n; });
+  };
 
   useEffect(() => {
     fetch('/api/top-semanal')
@@ -53,10 +57,11 @@ export function WeeklyTopContent() {
         const poster = imgUrl(item.poster_path, 'w92');
         const maxScore = items[0].activity_score;
         const pct = maxScore > 0 ? (item.activity_score / maxScore) * 100 : 0;
+        const imgKey = `${item.tmdb_id}-${item.media_type}`;
 
         return (
           <Link
-            key={`${item.tmdb_id}-${item.media_type}`}
+            key={imgKey}
             href={`/${item.media_type}/${item.tmdb_id}`}
             className="flex items-center gap-4 p-3 bg-[#111111] border border-[#262626] rounded-xl hover:border-amber-500/30 transition-all group"
           >
@@ -69,8 +74,8 @@ export function WeeklyTopContent() {
 
             {/* Poster */}
             <div className="w-12 h-16 rounded-lg overflow-hidden bg-[#181818] border border-[#333333] shrink-0">
-              {poster ? (
-                <Image src={poster} alt={item.title} width={48} height={64} className="object-cover w-full h-full" />
+              {poster && !failedImages.has(imgKey) ? (
+                <Image src={poster} alt={item.title} width={48} height={64} className="object-cover w-full h-full" onError={() => handleImgError(imgKey)} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Film size={16} className="text-[#525252]" />
