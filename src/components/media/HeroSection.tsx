@@ -12,6 +12,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
   const [current, setCurrent] = useState(0);
   const [fading, setFading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [backdropError, setBackdropError] = useState(false);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
 
@@ -19,6 +20,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
     if (fading) return;
     setFading(true);
     setProgress(0);
+    setBackdropError(false);
     setTimeout(() => { setCurrent(idx); setFading(false); }, 350);
   }, [fading]);
 
@@ -45,7 +47,10 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
   const genres   = item.genres?.slice(0, 2).map(g => g.name).join(' · ') || (item.media_type === 'tv' ? 'SERIE' : 'PELÍCULA');
   const runtime  = item.runtime ? `${item.runtime} MIN` : item.number_of_seasons ? `${item.number_of_seasons} TEMP.` : '';
   const detailURL = `/${item.media_type}/${item.tmdb_id}`;
-  const watchURL  = `/watch/${item.media_type}/${item.tmdb_id}`;
+  const watchParams = new URLSearchParams();
+  if (item.title) watchParams.set('title', item.title);
+  if (item.poster_path) watchParams.set('poster', item.poster_path);
+  const watchURL = `/watch/${item.media_type}/${item.tmdb_id}?${watchParams.toString()}`;
   const scoreInt  = Math.round(score * 10);
 
   return (
@@ -53,7 +58,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
 
       {/* ── Full-bleed backdrop ── */}
       <div className={`absolute inset-0 transition-opacity duration-500 ${fading ? 'opacity-0' : 'opacity-100'}`}>
-        {(backdrop || poster) ? (
+        {(backdrop || poster) && !backdropError ? (
           <Image
             src={backdrop || poster!}
             alt={item.title}
@@ -61,6 +66,7 @@ export function HeroSection({ items }: { items: MediaItem[] }) {
             sizes="100vw"
             className="object-cover object-center"
             priority
+            onError={() => setBackdropError(true)}
           />
         ) : (
           <div className="absolute inset-0 bg-[#141414]" />

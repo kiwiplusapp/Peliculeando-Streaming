@@ -19,6 +19,8 @@ export function PlayerButton({ item }: PlayerButtonProps) {
   const handlePlay = () => {
     const params = new URLSearchParams();
     if (item.number_of_seasons) params.set('seasons', String(item.number_of_seasons));
+    if (item.title) params.set('title', item.title);
+    if (item.poster_path) params.set('poster', item.poster_path);
     router.push(`/watch/${item.media_type}/${item.tmdb_id}?${params.toString()}`);
   };
 

@@ -18,6 +18,7 @@ interface MediaCardProps {
 export function MediaCard({ item, inWatchlist = false, onWatchlistChange, rank }: MediaCardProps) {
   const [inList, setInList] = useState(inWatchlist);
   const [loading, setLoading] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const { getProgress } = useWatchProgress();
   const watched = getProgress(item.tmdb_id, item.media_type);
   const poster  = imgUrl(item.poster_path, 'w342');
@@ -57,10 +58,11 @@ export function MediaCard({ item, inWatchlist = false, onWatchlistChange, rank }
     <Link href={href} className="group relative shrink-0 w-[148px] sm:w-[165px]">
       {/* Poster */}
       <div className="relative aspect-[2/3] bg-[#141414] border border-[#1f1f1f] overflow-hidden transition-all duration-200 group-hover:border-[#FFE600]/30 card-glow">
-        {poster ? (
+        {poster && !imgError ? (
           <Image
             src={poster} alt={item.title} fill sizes="170px"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            onError={() => setImgError(true)}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-[#1f1f1f]">

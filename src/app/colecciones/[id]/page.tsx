@@ -57,7 +57,7 @@ export default async function CollectionDetailPage({ params }: { params: { id: s
               style={!col.cover_poster ? { background: 'repeating-linear-gradient(45deg, #0A0A0A, #0A0A0A 4px, #141414 4px, #141414 8px)' } : {}}>
               {col.cover_poster ? (
                 <Image
-                  src={`https://image.tmdb.org/t/p/w200${col.cover_poster}`}
+                  src={imgUrl(col.cover_poster as string, 'w200')!}
                   alt={col.title as string}
                   width={96} height={96}
                   className="object-cover w-full h-full"
