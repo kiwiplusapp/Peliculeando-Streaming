@@ -89,8 +89,8 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
   }, [saveProgress, onClose]);
 
   const src = isTV
-    ? `https://vaplayer.ru/embed/tv?tmdb=${item.tmdb_id}&season=${season}&episode=${episode}&primaryColor=f59e0b`
-    : `https://vaplayer.ru/embed/movie?tmdb=${item.tmdb_id}&primaryColor=f59e0b`;
+    ? `https://vidlink.pro/tv/${item.tmdb_id}/${season}/${episode}?primaryColor=f59e0b`
+    : `https://vidlink.pro/movie/${item.tmdb_id}?primaryColor=f59e0b`;
 
   const HEADER_H = 52;
   const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;
@@ -138,6 +138,8 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
             allowFullScreen
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
+            /* sandbox (without allow-popups / allow-top-navigation) blocks the ad-network popups */
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             className="w-full h-full border-none"
           />
         )}

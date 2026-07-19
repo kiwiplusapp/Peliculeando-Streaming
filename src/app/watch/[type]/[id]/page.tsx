@@ -138,8 +138,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   };
 
   const src = isTV
-    ? `https://vaplayer.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&primaryColor=FFE600`
-    : `https://vaplayer.ru/embed/movie?tmdb=${id}&primaryColor=FFE600`;
+    ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FFE600`
+    : `https://vidlink.pro/movie/${id}?primaryColor=FFE600`;
 
   const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;
@@ -179,6 +179,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
             allowFullScreen
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
+            /* sandbox (without allow-popups / allow-top-navigation) blocks the ad-network popups */
+            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             className="absolute inset-0 w-full h-full border-none"
           />
         )}
