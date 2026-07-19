@@ -138,8 +138,6 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
             allowFullScreen
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
-            /* sandbox blocks popups/top-navigation from ad networks inside the iframe */
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             className="w-full h-full border-none"
           />
         )}

@@ -179,7 +179,6 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
             allowFullScreen
             allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
             referrerPolicy="no-referrer"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
             className="absolute inset-0 w-full h-full border-none"
           />
         )}
