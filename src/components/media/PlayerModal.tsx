@@ -89,8 +89,8 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
   }, [saveProgress, onClose]);
 
   const src = isTV
-    ? `https://vidlink.pro/tv/${item.tmdb_id}/${season}/${episode}?primaryColor=f59e0b`
-    : `https://vidlink.pro/movie/${item.tmdb_id}?primaryColor=f59e0b`;
+    ? `https://vidfast.pro/tv/${item.tmdb_id}/${season}/${episode}?theme=f59e0b&autoPlay=true`
+    : `https://vidfast.pro/movie/${item.tmdb_id}?theme=f59e0b&autoPlay=true`;
 
   const HEADER_H = 52;
   const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;

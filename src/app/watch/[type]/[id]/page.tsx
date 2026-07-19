@@ -138,8 +138,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   };
 
   const src = isTV
-    ? `https://vidlink.pro/tv/${id}/${season}/${episode}?primaryColor=FFE600`
-    : `https://vidlink.pro/movie/${id}?primaryColor=FFE600`;
+    ? `https://vidfast.pro/tv/${id}/${season}/${episode}?theme=FFE600&autoPlay=true`
+    : `https://vidfast.pro/movie/${id}?theme=FFE600&autoPlay=true`;
 
   const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;
