@@ -67,6 +67,7 @@ export function SelfHostedPlayer({
 
   const [menu, setMenu] = useState(false);
   const [tab, setTab] = useState<MenuTab>('main');
+  const [subText, setSubText] = useState('');
 
   useEffect(() => { menuRef.current = menu; }, [menu]);
 
@@ -144,12 +145,6 @@ export function SelfHostedPlayer({
     setMenu(false);
   };
   const pickSub = (i: number) => {
-    const video = videoRef.current;
-    if (video) {
-      for (let t = 0; t < video.textTracks.length; t++) {
-        video.textTracks[t].mode = t === i ? 'showing' : 'hidden';
-      }
-    }
     setCurSub(i);
     setMenu(false);
   };
@@ -220,26 +215,59 @@ export function SelfHostedPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Custom subtitle rendering (native ::cue positions them off-screen) ───────
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const tracks = v.textTracks;
+    let active: TextTrack | null = null;
+    for (let i = 0; i < tracks.length; i++) {
+      if (i === curSub) { tracks[i].mode = 'hidden'; active = tracks[i]; }
+      else tracks[i].mode = 'disabled';
+    }
+    setSubText('');
+    if (!active) return;
+
+    const onCue = () => {
+      const cues = active!.activeCues;
+      if (!cues || cues.length === 0) { setSubText(''); return; }
+      let txt = '';
+      for (let i = 0; i < cues.length; i++) txt += (cues[i] as VTTCue).text + '\n';
+      setSubText(txt.trim().replace(/<[^>]+>/g, ''));
+    };
+    active.addEventListener('cuechange', onCue);
+    onCue();
+    return () => active?.removeEventListener('cuechange', onCue);
+  }, [curSub, captions]);
+
   return (
     <div
       ref={wrapRef}
       className="relative w-full h-full bg-black overflow-hidden select-none"
-      onMouseMove={showControls}
+      onPointerMove={(e) => { if (e.pointerType === 'mouse') showControls(); }}
       onClick={toggleControls}
       style={{ cursor: controls ? 'default' : 'none' }}
     >
       <video ref={videoRef} playsInline className="w-full h-full">
-        {captions.map((c, i) => (
-          <track
-            key={c.id}
-            kind="subtitles"
-            srcLang={c.lang}
-            label={c.label}
-            src={c.url}
-            default={i === curSub}
-          />
+        {captions.map((c) => (
+          <track key={c.id} kind="subtitles" srcLang={c.lang} label={c.label} src={c.url} />
         ))}
       </video>
+
+      {/* Custom subtitle overlay */}
+      {subText && (
+        <div
+          className="absolute left-0 right-0 flex justify-center px-4 pointer-events-none transition-all"
+          style={{ bottom: controls ? 76 : 24 }}
+        >
+          <span
+            className="bg-black/70 text-white text-center rounded px-2 py-0.5"
+            style={{ whiteSpace: 'pre-line', fontSize: 'clamp(14px, 2.6vw, 24px)', lineHeight: 1.35, textShadow: '0 1px 3px #000' }}
+          >
+            {subText}
+          </span>
+        </div>
+      )}
 
       {/* Buffering spinner */}
       {(waiting || !ready) && !error && (
