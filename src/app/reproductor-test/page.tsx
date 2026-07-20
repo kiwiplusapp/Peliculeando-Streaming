@@ -14,6 +14,7 @@ interface StreamResp {
   sourceId?: string;
   type?: 'hls' | 'file';
   playlist?: string;
+  fallbacks?: string[];
   qualities?: Record<string, { type: string; url: string }>;
   headers?: Record<string, string>;
   captions?: { id: string; language: string; url: string; type: string }[];
@@ -31,17 +32,21 @@ export default function ReproductorTest() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<StreamResp | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [serverIdx, setServerIdx] = useState(0);
 
-  const proxiedPlaylist = (d: StreamResp) => {
-    if (!d.playlist) return '';
-    const h = btoa(JSON.stringify(d.headers || {}));
-    return `/api/hls-proxy?url=${encodeURIComponent(d.playlist)}&h=${encodeURIComponent(h)}`;
+  const proxied = (url: string, headers: Record<string, string> = {}) => {
+    const h = btoa(JSON.stringify(headers));
+    return `/api/hls-proxy?url=${encodeURIComponent(url)}&h=${encodeURIComponent(h)}`;
   };
+
+  const mirrors = (d: StreamResp): string[] =>
+    [d.playlist, ...(d.fallbacks || [])].filter(Boolean) as string[];
 
   const run = async () => {
     setLoading(true);
     setError(null);
     setData(null);
+    setServerIdx(0);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 65_000); // never spin forever
     try {
@@ -151,11 +156,34 @@ export default function ReproductorTest() {
         <>
           <div className="text-[11px] text-[#737373] mb-2">
             Fuente: <span className="text-[#FFE600]">{data.sourceId}</span> ·{' '}
-            {data.captions?.length || 0} subtítulos
+            {data.captions?.length || 0} subtítulos · {mirrors(data).length} servidores
           </div>
           <div className="aspect-video w-full">
-            <SelfHostedPlayer playlistUrl={proxiedPlaylist(data)} captions={data.captions || []} />
+            <SelfHostedPlayer
+              key={serverIdx}
+              src={proxied(mirrors(data)[serverIdx], data.headers || {})}
+              captions={data.captions || []}
+            />
           </div>
+
+          {mirrors(data).length > 1 && (
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="text-[10px] font-black tracking-widest text-[#525252]">SERVIDOR</span>
+              {mirrors(data).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setServerIdx(i)}
+                  className={`px-3 py-1.5 text-[11px] font-bold border transition-colors ${
+                    i === serverIdx
+                      ? 'bg-[#FFE600] text-black border-[#FFE600]'
+                      : 'bg-[#141414] text-[#A3A3A3] hover:text-white border-[#1f1f1f]'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
 
