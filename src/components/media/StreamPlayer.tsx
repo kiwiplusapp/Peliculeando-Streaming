@@ -3,17 +3,11 @@
 import { useEffect, useState } from 'react';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { SelfHostedPlayer } from './SelfHostedPlayer';
-
-interface Caption {
-  id: string;
-  lang: string;
-  label: string;
-  url: string;
-}
+import { loadSubtitles, type Sub } from '@/lib/subtitles';
 
 /**
- * Resolves a stream via /api/stream, builds proxied HLS URLs, and renders the
- * self-hosted player. Drop-in replacement for the old embed iframe.
+ * Resolves a stream via /api/stream, builds proxied HLS URLs, loads subtitles
+ * client-side from OpenSubtitles, and renders the self-hosted player.
  */
 export function StreamPlayer({
   type,
@@ -28,7 +22,7 @@ export function StreamPlayer({
 }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [sources, setSources] = useState<string[]>([]);
-  const [captions, setCaptions] = useState<Caption[]>([]);
+  const [captions, setCaptions] = useState<Sub[]>([]);
   const [server, setServer] = useState(0);
   const [errMsg, setErrMsg] = useState('');
   const [reload, setReload] = useState(0);
@@ -40,6 +34,7 @@ export function StreamPlayer({
 
     setStatus('loading');
     setServer(0);
+    setCaptions([]);
 
     const params = new URLSearchParams({ type, id: String(id) });
     if (type === 'tv') {
@@ -63,8 +58,14 @@ export function StreamPlayer({
           .filter(Boolean)
           .map((u: string) => proxy(u));
         setSources(mirrors);
-        setCaptions(j.captions || []);
         setStatus('ready');
+
+        // Subtitles are loaded in the browser (OpenSubtitles blocks datacenter IPs)
+        if (j.imdbId) {
+          loadSubtitles(j.imdbId, type, season, episode)
+            .then((subs) => { if (!cancelled) setCaptions(subs); })
+            .catch(() => {});
+        }
       })
       .catch((e) => {
         if (cancelled) return;

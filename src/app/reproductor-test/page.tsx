@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { SelfHostedPlayer } from '@/components/media/SelfHostedPlayer';
+import { loadSubtitles, type Sub } from '@/lib/subtitles';
 
 interface Attempt {
   provider: string;
@@ -17,7 +18,7 @@ interface StreamResp {
   fallbacks?: string[];
   qualities?: Record<string, { type: string; url: string }>;
   headers?: Record<string, string>;
-  captions?: { id: string; lang: string; label: string; url: string }[];
+  imdbId?: string;
   attempts?: Attempt[];
   media?: { title: string; year: number };
   error?: string;
@@ -33,6 +34,7 @@ export default function ReproductorTest() {
   const [data, setData] = useState<StreamResp | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [serverIdx, setServerIdx] = useState(0);
+  const [subs, setSubs] = useState<Sub[]>([]);
 
   const proxied = (url: string, headers: Record<string, string> = {}) => {
     const h = btoa(JSON.stringify(headers));
@@ -47,6 +49,7 @@ export default function ReproductorTest() {
     setError(null);
     setData(null);
     setServerIdx(0);
+    setSubs([]);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 65_000); // never spin forever
     try {
@@ -59,6 +62,11 @@ export default function ReproductorTest() {
       const j: StreamResp = await r.json();
       setData(j); // keep attempts even on failure
       if (!r.ok) setError(j.detail || j.error || `HTTP ${r.status}`);
+      else if (j.imdbId) {
+        loadSubtitles(j.imdbId, type, Number(season), Number(episode))
+          .then(setSubs)
+          .catch(() => {});
+      }
     } catch (e) {
       if (e instanceof Error && e.name === 'AbortError') {
         setError('Timeout: la búsqueda tardó más de 65s (todas las fuentes colgaron).');
@@ -156,13 +164,13 @@ export default function ReproductorTest() {
         <>
           <div className="text-[11px] text-[#737373] mb-2">
             Fuente: <span className="text-[#FFE600]">{data.sourceId}</span> ·{' '}
-            {data.captions?.length || 0} subtítulos · {mirrors(data).length} servidores
+            {subs.length} subtítulos · {mirrors(data).length} servidores
           </div>
           <div className="aspect-video w-full">
             <SelfHostedPlayer
               key={serverIdx}
               src={proxied(mirrors(data)[serverIdx], data.headers || {})}
-              captions={data.captions || []}
+              captions={subs}
             />
           </div>
 
