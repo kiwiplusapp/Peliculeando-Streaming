@@ -2,7 +2,6 @@
 const nextConfig = {
   experimental: {
     instrumentationHook: true,
-    serverComponentsExternalPackages: ['@consumet/extensions'],
   },
   images: {
     unoptimized: true,

@@ -1,14 +1,10 @@
-import { MOVIES } from '@consumet/extensions';
-import { getDetailFull, getTVSeason } from './tmdb';
+// Server-side resolver for the vaplayer (justhd) source. It hits vaplayer's
+// own JSON API — the same backend the .ru embed used — and returns the raw
+// master.m3u8 so we can play it in our own ad-free player. Never import on client.
 
-// Server-side scraper using Consumet. Tries several sources in cascade, each
-// step time-boxed, and reports per-provider diagnostics. Never import on client.
-const PROVIDERS = [
-  { id: 'flixhq', make: () => new MOVIES.FlixHQ() },
-  { id: 'sflix', make: () => new MOVIES.SFlix() },
-  { id: 'himovies', make: () => new MOVIES.HiMovies() },
-  { id: 'goku', make: () => new MOVIES.Goku() },
-];
+const API = 'https://streamdata.vaplayer.ru/api.php';
+// The stream host validates this referer (the real player's origin).
+const STREAM_REFERER = 'https://nextgencloudfabric.com/';
 
 export interface ScrapedStream {
   sourceId: string;
@@ -17,11 +13,13 @@ export interface ScrapedStream {
   qualities?: Record<string, { type: string; url: string }>;
   headers: Record<string, string>;
   captions: { id: string; language: string; url: string; type: string }[];
+  /** alternate mirrors, in case the first playlist fails client-side */
+  fallbacks?: string[];
 }
 
 export interface Attempt {
   provider: string;
-  stage: 'search' | 'info' | 'sources' | 'match' | 'ok';
+  stage: string;
   ok: boolean;
   note?: string;
 }
@@ -32,8 +30,6 @@ export interface ScrapeResponse {
   media: { title: string; year: number };
 }
 
-const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     p,
@@ -41,110 +37,87 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   ]);
 }
 
-const TIME_BUDGET_MS = 45_000; // stay under the 60s serverless limit
-
 export async function scrapeStream(opts: {
   type: 'movie' | 'tv';
   id: number;
   season?: number;
   episode?: number;
 }): Promise<ScrapeResponse> {
-  const startedAt = Date.now();
   const attempts: Attempt[] = [];
 
-  const d = await getDetailFull(opts.type, opts.id);
-  const title: string = opts.type === 'movie' ? d.title : d.name;
-  const origTitle: string = opts.type === 'movie' ? d.original_title : d.original_name;
-  const dateStr: string = opts.type === 'movie' ? d.release_date : d.first_air_date;
-  const year = Number((dateStr || '').slice(0, 4)) || 0;
-  const wantedType = opts.type === 'movie' ? 'Movie' : 'TV Series';
-  const queries = Array.from(new Set([origTitle, title].filter(Boolean)));
-
-  for (const p of PROVIDERS) {
-    if (Date.now() - startedAt > TIME_BUDGET_MS) {
-      attempts.push({ provider: p.id, stage: 'search', ok: false, note: 'skipped: time budget exceeded' });
-      continue;
-    }
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const prov: any = p.make();
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let match: any = null;
-      for (const q of queries) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res: any = await withTimeout(prov.search(q), 12_000, `${p.id}.search`);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cands = (res.results || []).filter((r: any) => r.type === wantedType);
-        match =
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          cands.find((r: any) => norm(r.title) === norm(q) && (!year || String(r.releaseDate || '').includes(String(year)))) ||
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          cands.find((r: any) => norm(r.title) === norm(q)) ||
-          cands[0];
-        if (match) break;
-      }
-      if (!match) {
-        attempts.push({ provider: p.id, stage: 'match', ok: false, note: 'no matching title' });
-        continue;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const info: any = await withTimeout(prov.fetchMediaInfo(match.id), 12_000, `${p.id}.info`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let ep: any;
-      if (opts.type === 'movie') {
-        ep = info.episodes?.[0];
-      } else {
-        const seasonNum = opts.season || 1;
-        const episodeNum = opts.episode || 1;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ep = (info.episodes || []).find((e: any) => e.season === seasonNum && e.number === episodeNum);
-      }
-      if (!ep) {
-        attempts.push({ provider: p.id, stage: 'info', ok: false, note: 'episode not found' });
-        continue;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const s: any = await withTimeout(prov.fetchEpisodeSources(ep.id, info.id), 18_000, `${p.id}.sources`);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const chosen = (s.sources || []).find((x: any) => x.isM3U8) || s.sources?.[0];
-      if (!chosen) {
-        attempts.push({ provider: p.id, stage: 'sources', ok: false, note: 'no playable source' });
-        continue;
-      }
-
-      attempts.push({ provider: p.id, stage: 'ok', ok: true, note: chosen.isM3U8 ? 'hls' : 'file' });
-      return {
-        media: { title, year },
-        attempts,
-        result: {
-          sourceId: p.id,
-          type: chosen.isM3U8 ? 'hls' : 'file',
-          playlist: chosen.isM3U8 ? chosen.url : undefined,
-          qualities: !chosen.isM3U8 ? { default: { type: 'mp4', url: chosen.url } } : undefined,
-          headers: s.headers || {},
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          captions: (s.subtitles || []).map((c: any) => ({
-            id: c.lang || c.id || 'sub',
-            language: c.lang || 'sub',
-            url: c.url,
-            type: 'vtt',
-          })),
-        },
-      };
-    } catch (e) {
-      attempts.push({
-        provider: p.id,
-        stage: 'search',
-        ok: false,
-        note: e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120),
-      });
-      continue;
-    }
+  const params = new URLSearchParams({ tmdb: String(opts.id), type: opts.type });
+  if (opts.type === 'tv') {
+    params.set('season', String(opts.season || 1));
+    params.set('episode', String(opts.episode || 1));
   }
+  const url = `${API}?${params.toString()}`;
 
-  void getTVSeason;
-  return { result: null, attempts, media: { title, year } };
+  try {
+    const res = await withTimeout(
+      fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+          Referer: STREAM_REFERER,
+          Origin: STREAM_REFERER.replace(/\/$/, ''),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      }),
+      15_000,
+      'vaplayer.api',
+    );
+
+    if (!res.ok) {
+      attempts.push({ provider: 'vaplayer', stage: 'api', ok: false, note: `HTTP ${res.status}` });
+      return { result: null, attempts, media: { title: '', year: 0 } };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const j: any = await res.json();
+    const data = j?.data;
+    const streams: string[] = Array.isArray(data?.stream_urls) ? data.stream_urls : [];
+    const title: string = data?.title || '';
+
+    if (j?.status_code !== '200' || streams.length === 0) {
+      attempts.push({
+        provider: 'vaplayer',
+        stage: 'parse',
+        ok: false,
+        note: `status=${j?.status_code} streams=${streams.length}`,
+      });
+      return { result: null, attempts, media: { title, year: 0 } };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const captions = (Array.isArray(data?.default_subs) ? data.default_subs : []).map((c: any, i: number) => ({
+      id: String(c.lang || c.label || i),
+      language: c.lang || c.label || 'sub',
+      url: c.file || c.url || c.src || '',
+      type: 'vtt',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    })).filter((c: any) => c.url);
+
+    attempts.push({ provider: 'vaplayer', stage: 'ok', ok: true, note: `${streams.length} streams` });
+
+    return {
+      media: { title, year: 0 },
+      attempts,
+      result: {
+        sourceId: 'vaplayer',
+        type: 'hls',
+        playlist: streams[0],
+        fallbacks: streams.slice(1),
+        headers: { Referer: STREAM_REFERER, Origin: STREAM_REFERER.replace(/\/$/, '') },
+        captions,
+      },
+    };
+  } catch (e) {
+    attempts.push({
+      provider: 'vaplayer',
+      stage: 'api',
+      ok: false,
+      note: e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120),
+    });
+    return { result: null, attempts, media: { title: '', year: 0 } };
+  }
 }
