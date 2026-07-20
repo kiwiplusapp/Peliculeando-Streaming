@@ -138,8 +138,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   };
 
   const src = isTV
-    ? `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`
-    : `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`;
+    ? `https://vidjoy.pro/embed/tv/${id}/${season}/${episode}`
+    : `https://vidjoy.pro/embed/movie/${id}`;
 
   const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;

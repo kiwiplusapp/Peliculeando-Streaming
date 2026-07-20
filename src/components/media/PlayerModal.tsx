@@ -89,8 +89,8 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
   }, [saveProgress, onClose]);
 
   const src = isTV
-    ? `https://vidsrc.cc/v2/embed/tv/${item.tmdb_id}/${season}/${episode}?autoPlay=true`
-    : `https://vidsrc.cc/v2/embed/movie/${item.tmdb_id}?autoPlay=true`;
+    ? `https://vidjoy.pro/embed/tv/${item.tmdb_id}/${season}/${episode}`
+    : `https://vidjoy.pro/embed/movie/${item.tmdb_id}`;
 
   const HEADER_H = 52;
   const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;
