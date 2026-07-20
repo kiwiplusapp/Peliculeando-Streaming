@@ -45,6 +45,8 @@ export function SelfHostedPlayer({
   const hlsRef = useRef<Hls | null>(null);
   const hideTimer = useRef<NodeJS.Timeout | null>(null);
   const menuRef = useRef(false);
+  const controlsRef = useRef(true);
+  const isMouseRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -70,17 +72,26 @@ export function SelfHostedPlayer({
   const [subText, setSubText] = useState('');
 
   useEffect(() => { menuRef.current = menu; }, [menu]);
+  useEffect(() => {
+    // Real pointer (mouse/trackpad) vs touch. iOS fakes mouse events on tap,
+    // so pointerType can't be trusted — matchMedia can.
+    isMouseRef.current =
+      typeof window !== 'undefined' && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }, []);
 
-  // ── Controls visibility ──────────────────────────────────────────────────────
+  // ── Controls visibility (ref-driven to avoid stale closures) ─────────────────
+  const setCtl = (v: boolean) => { controlsRef.current = v; setControls(v); };
   const scheduleHide = () => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
-      if (videoRef.current && !videoRef.current.paused && !menuRef.current) setControls(false);
-    }, 4000);
+      if (videoRef.current && !videoRef.current.paused && !menuRef.current) setCtl(false);
+    }, 3500);
   };
-  const showControls = () => { setControls(true); scheduleHide(); };
-  const toggleControls = () => {
-    if (controls) setControls(false);
+  const showControls = () => { setCtl(true); scheduleHide(); };
+  // Single tap handler for the whole surface.
+  const onTapSurface = () => {
+    if (menuRef.current) { setMenu(false); showControls(); return; }
+    if (controlsRef.current) setCtl(false);
     else showControls();
   };
 
@@ -178,7 +189,7 @@ export function SelfHostedPlayer({
   const openMenu = () => {
     setTab('main');
     setMenu((m) => !m);
-    setControls(true);
+    setCtl(true);
     if (hideTimer.current) clearTimeout(hideTimer.current);
   };
 
@@ -191,10 +202,10 @@ export function SelfHostedPlayer({
     };
     const onDur = () => setDur(v.duration);
     const onWait = () => setWaiting(true);
-    const onPlaying = () => { setWaiting(false); setPlaying(true); setControls(true); scheduleHide(); };
+    const onPlaying = () => { setWaiting(false); setPlaying(true); showControls(); };
     const onPause = () => {
       setPlaying(false);
-      setControls(true);
+      setCtl(true);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
     v.addEventListener('timeupdate', onTime);
@@ -244,11 +255,12 @@ export function SelfHostedPlayer({
     <div
       ref={wrapRef}
       className="relative w-full h-full bg-black overflow-hidden select-none"
-      onPointerMove={(e) => { if (e.pointerType === 'mouse') showControls(); }}
-      onClick={toggleControls}
+      onMouseMove={() => { if (isMouseRef.current) showControls(); }}
+      onClick={onTapSurface}
       style={{ cursor: controls ? 'default' : 'none' }}
     >
-      <video ref={videoRef} playsInline className="w-full h-full">
+      {/* pointerEvents:none so iOS doesn't swallow taps meant for the surface */}
+      <video ref={videoRef} playsInline className="w-full h-full" style={{ pointerEvents: 'none' }}>
         {captions.map((c) => (
           <track key={c.id} kind="subtitles" srcLang={c.lang} label={c.label} src={c.url} />
         ))}
