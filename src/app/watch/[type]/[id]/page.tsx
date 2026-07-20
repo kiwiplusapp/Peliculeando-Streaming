@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useXPNotification } from '@/components/gamification/XPNotification';
+import { StreamPlayer } from '@/components/media/StreamPlayer';
 
 interface Episode {
   episode_number: number;
@@ -137,10 +138,6 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
     router.back();
   };
 
-  const src = isTV
-    ? `https://vidjoy.pro/embed/tv/${id}/${season}/${episode}`
-    : `https://vidjoy.pro/embed/movie/${id}`;
-
   const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;
   const FOOTER_H  = hasEpisodes ? 56 : 0;
@@ -173,13 +170,12 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
       {/* ── Player ── */}
       <div className="flex-1 relative">
         {ready && (
-          <iframe
+          <StreamPlayer
             key={`${id}-${season}-${episode}`}
-            src={src}
-            allowFullScreen
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-            referrerPolicy="no-referrer"
-            className="absolute inset-0 w-full h-full border-none"
+            type={type as 'movie' | 'tv'}
+            id={id}
+            season={season}
+            episode={episode}
           />
         )}
       </div>

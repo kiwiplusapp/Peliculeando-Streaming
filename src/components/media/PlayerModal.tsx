@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
+import { StreamPlayer } from './StreamPlayer';
 
 interface Episode {
   episode_number: number;
@@ -88,10 +89,6 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
     onClose();
   }, [saveProgress, onClose]);
 
-  const src = isTV
-    ? `https://vidjoy.pro/embed/tv/${item.tmdb_id}/${season}/${episode}`
-    : `https://vidjoy.pro/embed/movie/${item.tmdb_id}`;
-
   const HEADER_H = 52;
   const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;
 
@@ -126,19 +123,18 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
         </button>
       </div>
 
-      {/* Iframe — occupies remaining space between header and footer */}
+      {/* Player — occupies remaining space between header and footer */}
       <div
         className="fixed left-0 right-0 z-[150]"
         style={{ top: HEADER_H, bottom: FOOTER_H }}
       >
         {progressLoaded && (
-          <iframe
+          <StreamPlayer
             key={`${item.tmdb_id}-${season}-${episode}`}
-            src={src}
-            allowFullScreen
-            allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-            referrerPolicy="no-referrer"
-            className="w-full h-full border-none"
+            type={item.media_type}
+            id={item.tmdb_id}
+            season={season}
+            episode={episode}
           />
         )}
       </div>

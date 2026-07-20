@@ -14,7 +14,7 @@ interface Caption {
   type: string;
 }
 
-type MenuTab = 'main' | 'quality' | 'audio' | 'subs' | 'speed';
+type MenuTab = 'main' | 'quality' | 'audio' | 'subs' | 'speed' | 'server';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -30,9 +30,15 @@ function fmt(s: number): string {
 export function SelfHostedPlayer({
   src,
   captions = [],
+  servers = 0,
+  server = 0,
+  onServer,
 }: {
   src: string;
   captions?: Caption[];
+  servers?: number;
+  server?: number;
+  onServer?: (i: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -276,6 +282,11 @@ export function SelfHostedPlayer({
               <li><button className="w-full text-left px-4 py-2.5 hover:bg-white/5 flex justify-between" onClick={() => setTab('speed')}>
                 Velocidad <span className="text-[#FFE600]">{speed}x</span>
               </button></li>
+              {servers > 1 && (
+                <li><button className="w-full text-left px-4 py-2.5 hover:bg-white/5 flex justify-between" onClick={() => setTab('server')}>
+                  Servidor <span className="text-[#FFE600]">{server + 1}</span>
+                </button></li>
+              )}
             </ul>
           )}
 
@@ -310,6 +321,19 @@ export function SelfHostedPlayer({
             <MenuList title="Velocidad" onBack={() => setTab('main')}>
               {SPEEDS.map((s) => (
                 <Row key={s} active={speed === s} label={`${s}x`} onClick={() => pickSpeed(s)} />
+              ))}
+            </MenuList>
+          )}
+
+          {tab === 'server' && (
+            <MenuList title="Servidor" onBack={() => setTab('main')}>
+              {Array.from({ length: servers }, (_, i) => (
+                <Row
+                  key={i}
+                  active={server === i}
+                  label={`Servidor ${i + 1}`}
+                  onClick={() => { onServer?.(i); setMenu(false); }}
+                />
               ))}
             </MenuList>
           )}
