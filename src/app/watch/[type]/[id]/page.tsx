@@ -138,8 +138,8 @@ export default function WatchPage({ params }: { params: { type: string; id: stri
   };
 
   const src = isTV
-    ? `https://vaplayer.ru/embed/tv?tmdb=${id}&season=${season}&episode=${episode}&primaryColor=FFE600`
-    : `https://vaplayer.ru/embed/movie?tmdb=${id}&primaryColor=FFE600`;
+    ? `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`
+    : `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`;
 
   const HEADER_H  = 52;
   const hasEpisodes = isTV && episodes.length > 0;

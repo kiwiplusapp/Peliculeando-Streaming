@@ -89,8 +89,8 @@ export function PlayerModal({ item, onClose }: { item: PlayerItem; onClose: () =
   }, [saveProgress, onClose]);
 
   const src = isTV
-    ? `https://vaplayer.ru/embed/tv?tmdb=${item.tmdb_id}&season=${season}&episode=${episode}&primaryColor=f59e0b`
-    : `https://vaplayer.ru/embed/movie?tmdb=${item.tmdb_id}&primaryColor=f59e0b`;
+    ? `https://vidsrc.cc/v2/embed/tv/${item.tmdb_id}/${season}/${episode}?autoPlay=true`
+    : `https://vidsrc.cc/v2/embed/movie/${item.tmdb_id}?autoPlay=true`;
 
   const HEADER_H = 52;
   const FOOTER_H = isTV && episodes.length > 0 ? 56 : 0;
