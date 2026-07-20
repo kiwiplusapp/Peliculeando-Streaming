@@ -2,6 +2,7 @@
 const nextConfig = {
   experimental: {
     instrumentationHook: true,
+    serverComponentsExternalPackages: ['@movie-web/providers'],
   },
   images: {
     unoptimized: true,
