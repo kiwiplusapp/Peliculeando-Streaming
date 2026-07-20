@@ -17,7 +17,7 @@ interface StreamResp {
   fallbacks?: string[];
   qualities?: Record<string, { type: string; url: string }>;
   headers?: Record<string, string>;
-  captions?: { id: string; language: string; url: string; type: string }[];
+  captions?: { id: string; lang: string; label: string; url: string }[];
   attempts?: Attempt[];
   media?: { title: string; year: number };
   error?: string;

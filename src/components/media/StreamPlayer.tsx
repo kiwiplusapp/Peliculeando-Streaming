@@ -6,9 +6,9 @@ import { SelfHostedPlayer } from './SelfHostedPlayer';
 
 interface Caption {
   id: string;
-  language: string;
+  lang: string;
+  label: string;
   url: string;
-  type: string;
 }
 
 /**

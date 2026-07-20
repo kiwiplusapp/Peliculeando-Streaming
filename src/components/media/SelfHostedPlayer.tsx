@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import {
   Play, Pause, Volume2, VolumeX, Maximize, Settings, Check,
@@ -9,9 +9,9 @@ import {
 
 interface Caption {
   id: string;
-  language: string;
+  lang: string;
+  label: string;
   url: string;
-  type: string;
 }
 
 type MenuTab = 'main' | 'quality' | 'audio' | 'subs' | 'speed' | 'server';
@@ -44,6 +44,7 @@ export function SelfHostedPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const hideTimer = useRef<NodeJS.Timeout | null>(null);
+  const menuRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -66,6 +67,21 @@ export function SelfHostedPlayer({
 
   const [menu, setMenu] = useState(false);
   const [tab, setTab] = useState<MenuTab>('main');
+
+  useEffect(() => { menuRef.current = menu; }, [menu]);
+
+  // ── Controls visibility ──────────────────────────────────────────────────────
+  const scheduleHide = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      if (videoRef.current && !videoRef.current.paused && !menuRef.current) setControls(false);
+    }, 4000);
+  };
+  const showControls = () => { setControls(true); scheduleHide(); };
+  const toggleControls = () => {
+    if (controls) setControls(false);
+    else showControls();
+  };
 
   // ── HLS setup ──────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -118,8 +134,7 @@ export function SelfHostedPlayer({
 
   // ── Quality / audio / subtitle actions ──────────────────────────────────────
   const pickQuality = (i: number) => {
-    // i === -1 restores adaptive (auto) quality; otherwise force the level.
-    if (hlsRef.current) hlsRef.current.currentLevel = i;
+    if (hlsRef.current) hlsRef.current.currentLevel = i; // -1 = auto
     setCurLevel(i);
     setMenu(false);
   };
@@ -145,15 +160,13 @@ export function SelfHostedPlayer({
   };
 
   // ── Basic controls ───────────────────────────────────────────────────────────
-  const togglePlay = useCallback(() => {
+  const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) { v.play(); setPlaying(true); } else { v.pause(); setPlaying(false); }
-  }, []);
-
+  };
   const seek = (t: number) => { if (videoRef.current) videoRef.current.currentTime = t; };
   const skip = (d: number) => { if (videoRef.current) videoRef.current.currentTime += d; };
-
   const toggleMute = () => {
     const v = videoRef.current; if (!v) return;
     v.muted = !v.muted; setMuted(v.muted);
@@ -162,11 +175,16 @@ export function SelfHostedPlayer({
     const v = videoRef.current; if (!v) return;
     v.volume = val; v.muted = val === 0; setVolume(val); setMuted(val === 0);
   };
-
   const toggleFs = () => {
     const el = wrapRef.current; if (!el) return;
     if (!document.fullscreenElement) el.requestFullscreen?.().catch(() => {});
     else document.exitFullscreen?.();
+  };
+  const openMenu = () => {
+    setTab('main');
+    setMenu((m) => !m);
+    setControls(true);
+    if (hideTimer.current) clearTimeout(hideTimer.current);
   };
 
   // ── Video element events ─────────────────────────────────────────────────────
@@ -178,8 +196,12 @@ export function SelfHostedPlayer({
     };
     const onDur = () => setDur(v.duration);
     const onWait = () => setWaiting(true);
-    const onPlaying = () => { setWaiting(false); setPlaying(true); };
-    const onPause = () => setPlaying(false);
+    const onPlaying = () => { setWaiting(false); setPlaying(true); setControls(true); scheduleHide(); };
+    const onPause = () => {
+      setPlaying(false);
+      setControls(true);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
     v.addEventListener('timeupdate', onTime);
     v.addEventListener('durationchange', onDur);
     v.addEventListener('waiting', onWait);
@@ -195,38 +217,25 @@ export function SelfHostedPlayer({
       v.removeEventListener('pause', onPause);
       document.removeEventListener('fullscreenchange', onFs);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Auto-hide controls ───────────────────────────────────────────────────────
-  const poke = useCallback(() => {
-    setControls(true);
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => { if (playing && !menu) setControls(false); }, 3000);
-  }, [playing, menu]);
-
-  const subLabel = (c: Caption) => c.language?.toUpperCase() || 'SUB';
 
   return (
     <div
       ref={wrapRef}
       className="relative w-full h-full bg-black overflow-hidden select-none"
-      onMouseMove={poke}
-      onClick={poke}
+      onMouseMove={showControls}
+      onClick={toggleControls}
       style={{ cursor: controls ? 'default' : 'none' }}
     >
-      <video
-        ref={videoRef}
-        playsInline
-        className="w-full h-full"
-        onClick={(e) => { e.stopPropagation(); togglePlay(); }}
-      >
+      <video ref={videoRef} playsInline className="w-full h-full">
         {captions.map((c, i) => (
           <track
             key={c.id}
             kind="subtitles"
-            srcLang={c.language}
-            label={subLabel(c)}
-            src={`/api/hls-proxy?url=${encodeURIComponent(c.url)}`}
+            srcLang={c.lang}
+            label={c.label}
+            src={c.url}
             default={i === curSub}
           />
         ))}
@@ -248,13 +257,13 @@ export function SelfHostedPlayer({
       {/* Center controls */}
       {controls && ready && !error && (
         <div className="absolute inset-0 flex items-center justify-center gap-8 pointer-events-none">
-          <button onClick={(e) => { e.stopPropagation(); skip(-10); }} className="pointer-events-auto text-white/90 hover:text-white">
+          <button onClick={(e) => { e.stopPropagation(); skip(-10); showControls(); }} className="pointer-events-auto text-white/90 hover:text-white">
             <RotateCcw size={30} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="pointer-events-auto text-white bg-black/40 rounded-full p-3 hover:bg-black/60">
+          <button onClick={(e) => { e.stopPropagation(); togglePlay(); showControls(); }} className="pointer-events-auto text-white bg-black/40 rounded-full p-3 hover:bg-black/60">
             {playing ? <Pause size={30} /> : <Play size={30} />}
           </button>
-          <button onClick={(e) => { e.stopPropagation(); skip(10); }} className="pointer-events-auto text-white/90 hover:text-white">
+          <button onClick={(e) => { e.stopPropagation(); skip(10); showControls(); }} className="pointer-events-auto text-white/90 hover:text-white">
             <RotateCw size={30} />
           </button>
         </div>
@@ -277,7 +286,7 @@ export function SelfHostedPlayer({
                 </button></li>
               )}
               <li><button className="w-full text-left px-4 py-2.5 hover:bg-white/5 flex justify-between" onClick={() => setTab('subs')}>
-                Subtítulos <span className="text-[#FFE600]">{curSub === -1 ? 'Off' : subLabel(captions[curSub])}</span>
+                Subtítulos <span className="text-[#FFE600]">{curSub === -1 ? 'Off' : captions[curSub]?.label}</span>
               </button></li>
               <li><button className="w-full text-left px-4 py-2.5 hover:bg-white/5 flex justify-between" onClick={() => setTab('speed')}>
                 Velocidad <span className="text-[#FFE600]">{speed}x</span>
@@ -311,7 +320,7 @@ export function SelfHostedPlayer({
             <MenuList title="Subtítulos" onBack={() => setTab('main')}>
               <Row active={curSub === -1} label="Off" onClick={() => pickSub(-1)} />
               {captions.map((c, i) => (
-                <Row key={c.id} active={curSub === i} label={c.language} onClick={() => pickSub(i)} />
+                <Row key={c.id} active={curSub === i} label={c.label} onClick={() => pickSub(i)} />
               ))}
               {captions.length === 0 && <div className="px-4 py-2.5 text-[#737373] text-xs">Sin subtítulos disponibles</div>}
             </MenuList>
@@ -353,13 +362,13 @@ export function SelfHostedPlayer({
             <div className="absolute inset-y-0 left-0 bg-[#FFE600] rounded-full" style={{ width: `${dur ? (cur / dur) * 100 : 0}%` }} />
             <input
               type="range" min={0} max={dur || 0} step="any" value={cur}
-              onChange={(e) => seek(Number(e.target.value))}
+              onChange={(e) => { seek(Number(e.target.value)); showControls(); }}
               className="absolute inset-0 w-full opacity-0 cursor-pointer"
             />
           </div>
 
           <div className="flex items-center gap-3 text-white">
-            <button onClick={togglePlay}>{playing ? <Pause size={20} /> : <Play size={20} />}</button>
+            <button onClick={() => { togglePlay(); showControls(); }}>{playing ? <Pause size={20} /> : <Play size={20} />}</button>
 
             <div className="flex items-center gap-1 group">
               <button onClick={toggleMute}>{muted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}</button>
@@ -375,12 +384,12 @@ export function SelfHostedPlayer({
             <div className="flex-1" />
 
             <button
-              onClick={() => { setMenu((m) => !m); setTab('main'); }}
+              onClick={openMenu}
               className={menu ? 'text-[#FFE600]' : 'text-white hover:text-[#FFE600]'}
             >
               <Settings size={20} />
             </button>
-            <button onClick={toggleFs}><Maximize size={20} />{fs ? null : null}</button>
+            <button onClick={toggleFs}><Maximize size={20} /></button>
           </div>
         </div>
       )}
