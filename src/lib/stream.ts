@@ -1,24 +1,25 @@
-import { makeProviders, makeStandardFetcher, targets } from '@movie-web/providers';
+import { MOVIES } from '@consumet/extensions';
 import { getDetailFull, getTVSeason } from './tmdb';
 
-// Server-side scraper. Runs the movie-web providers against public sources and
-// returns the raw stream link + audio/caption info. Never import this on the client.
-const providers = makeProviders({
-  fetcher: makeStandardFetcher(fetch),
-  target: targets.NATIVE, // running on the server: no CORS, headers can be set freely
-});
+// Server-side scraper using Consumet. Tries several sources in cascade so a
+// single dead provider doesn't break playback. Never import on the client.
+const PROVIDERS = [
+  { id: 'flixhq', make: () => new MOVIES.FlixHQ() },
+  { id: 'sflix', make: () => new MOVIES.SFlix() },
+  { id: 'himovies', make: () => new MOVIES.HiMovies() },
+  { id: 'goku', make: () => new MOVIES.Goku() },
+];
 
 export interface ScrapedStream {
   sourceId: string;
   type: 'hls' | 'file';
-  /** master playlist URL (hls) */
   playlist?: string;
-  /** direct file qualities (file) */
   qualities?: Record<string, { type: string; url: string }>;
-  /** headers required to fetch the stream (Referer/Origin/User-Agent) */
   headers: Record<string, string>;
   captions: { id: string; language: string; url: string; type: string }[];
 }
+
+const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export async function scrapeStream(opts: {
   type: 'movie' | 'tv';
@@ -28,49 +29,71 @@ export async function scrapeStream(opts: {
 }): Promise<ScrapedStream | null> {
   const d = await getDetailFull(opts.type, opts.id);
   const title: string = opts.type === 'movie' ? d.title : d.name;
+  const origTitle: string = opts.type === 'movie' ? d.original_title : d.original_name;
   const dateStr: string = opts.type === 'movie' ? d.release_date : d.first_air_date;
-  const releaseYear = Number((dateStr || '').slice(0, 4)) || 0;
-  const imdbId: string | undefined =
-    opts.type === 'movie' ? d.imdb_id : d.external_ids?.imdb_id;
+  const year = Number((dateStr || '').slice(0, 4)) || 0;
+  const wantedType = opts.type === 'movie' ? 'Movie' : 'TV Series';
+  const queries = Array.from(new Set([origTitle, title].filter(Boolean)));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let media: any;
-  if (opts.type === 'movie') {
-    media = { type: 'movie', title, releaseYear, tmdbId: String(opts.id), imdbId };
-  } else {
-    const seasonNum = opts.season || 1;
-    const episodeNum = opts.episode || 1;
-    const seasonData = await getTVSeason(opts.id, seasonNum);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ep = (seasonData.episodes || []).find((e: any) => e.episode_number === episodeNum);
-    media = {
-      type: 'show',
-      title,
-      releaseYear,
-      tmdbId: String(opts.id),
-      imdbId,
-      season: { number: seasonNum, tmdbId: String(seasonData.id || '') },
-      episode: { number: episodeNum, tmdbId: String(ep?.id || '') },
-    };
+  for (const p of PROVIDERS) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const prov: any = p.make();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let match: any = null;
+      for (const q of queries) {
+        const res = await prov.search(q);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cands = (res.results || []).filter((r: any) => r.type === wantedType);
+        match =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          cands.find((r: any) => norm(r.title) === norm(q) && (!year || String(r.releaseDate || '').includes(String(year)))) ||
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          cands.find((r: any) => norm(r.title) === norm(q)) ||
+          cands[0];
+        if (match) break;
+      }
+      if (!match) continue;
+
+      const info = await prov.fetchMediaInfo(match.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let ep: any;
+      if (opts.type === 'movie') {
+        ep = info.episodes?.[0];
+      } else {
+        const seasonNum = opts.season || 1;
+        const episodeNum = opts.episode || 1;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ep = (info.episodes || []).find((e: any) => e.season === seasonNum && e.number === episodeNum);
+      }
+      if (!ep) continue;
+
+      const s = await prov.fetchEpisodeSources(ep.id, info.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const chosen = (s.sources || []).find((x: any) => x.isM3U8) || s.sources?.[0];
+      if (!chosen) continue;
+
+      return {
+        sourceId: p.id,
+        type: chosen.isM3U8 ? 'hls' : 'file',
+        playlist: chosen.isM3U8 ? chosen.url : undefined,
+        qualities: !chosen.isM3U8 ? { default: { type: 'mp4', url: chosen.url } } : undefined,
+        headers: s.headers || {},
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        captions: (s.subtitles || []).map((c: any) => ({
+          id: c.lang || c.id || 'sub',
+          language: c.lang || 'sub',
+          url: c.url,
+          type: 'vtt',
+        })),
+      };
+    } catch {
+      continue;
+    }
   }
 
-  const output = await providers.runAll({ media });
-  if (!output) return null;
-
-  const s = output.stream;
-  return {
-    sourceId: output.sourceId,
-    type: s.type,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    playlist: (s as any).playlist,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    qualities: (s as any).qualities,
-    headers: { ...(s.preferredHeaders || {}), ...(s.headers || {}) },
-    captions: (s.captions || []).map((c) => ({
-      id: c.id,
-      language: c.language,
-      url: c.url,
-      type: c.type,
-    })),
-  };
+  // getTVSeason kept imported for potential future episode-id matching
+  void getTVSeason;
+  return null;
 }
