@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await scrapeStream({
+    const { result, attempts, media } = await scrapeStream({
       type,
       id,
       season: Number(sp.get('season')) || undefined,
@@ -23,9 +23,12 @@ export async function GET(req: NextRequest) {
     });
 
     if (!result) {
-      return NextResponse.json({ error: 'No stream found' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'No stream found', attempts, media },
+        { status: 404 },
+      );
     }
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, attempts, media });
   } catch (e) {
     return NextResponse.json(
       { error: 'Scrape failed', detail: e instanceof Error ? e.message : String(e) },

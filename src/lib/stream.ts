@@ -1,8 +1,8 @@
 import { MOVIES } from '@consumet/extensions';
 import { getDetailFull, getTVSeason } from './tmdb';
 
-// Server-side scraper using Consumet. Tries several sources in cascade so a
-// single dead provider doesn't break playback. Never import on the client.
+// Server-side scraper using Consumet. Tries several sources in cascade, each
+// step time-boxed, and reports per-provider diagnostics. Never import on client.
 const PROVIDERS = [
   { id: 'flixhq', make: () => new MOVIES.FlixHQ() },
   { id: 'sflix', make: () => new MOVIES.SFlix() },
@@ -19,14 +19,39 @@ export interface ScrapedStream {
   captions: { id: string; language: string; url: string; type: string }[];
 }
 
+export interface Attempt {
+  provider: string;
+  stage: 'search' | 'info' | 'sources' | 'match' | 'ok';
+  ok: boolean;
+  note?: string;
+}
+
+export interface ScrapeResponse {
+  result: ScrapedStream | null;
+  attempts: Attempt[];
+  media: { title: string; year: number };
+}
+
 const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`timeout ${label} ${ms}ms`)), ms)),
+  ]);
+}
+
+const TIME_BUDGET_MS = 45_000; // stay under the 60s serverless limit
 
 export async function scrapeStream(opts: {
   type: 'movie' | 'tv';
   id: number;
   season?: number;
   episode?: number;
-}): Promise<ScrapedStream | null> {
+}): Promise<ScrapeResponse> {
+  const startedAt = Date.now();
+  const attempts: Attempt[] = [];
+
   const d = await getDetailFull(opts.type, opts.id);
   const title: string = opts.type === 'movie' ? d.title : d.name;
   const origTitle: string = opts.type === 'movie' ? d.original_title : d.original_name;
@@ -36,6 +61,10 @@ export async function scrapeStream(opts: {
   const queries = Array.from(new Set([origTitle, title].filter(Boolean)));
 
   for (const p of PROVIDERS) {
+    if (Date.now() - startedAt > TIME_BUDGET_MS) {
+      attempts.push({ provider: p.id, stage: 'search', ok: false, note: 'skipped: time budget exceeded' });
+      continue;
+    }
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const prov: any = p.make();
@@ -43,7 +72,8 @@ export async function scrapeStream(opts: {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let match: any = null;
       for (const q of queries) {
-        const res = await prov.search(q);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const res: any = await withTimeout(prov.search(q), 12_000, `${p.id}.search`);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cands = (res.results || []).filter((r: any) => r.type === wantedType);
         match =
@@ -54,9 +84,13 @@ export async function scrapeStream(opts: {
           cands[0];
         if (match) break;
       }
-      if (!match) continue;
+      if (!match) {
+        attempts.push({ provider: p.id, stage: 'match', ok: false, note: 'no matching title' });
+        continue;
+      }
 
-      const info = await prov.fetchMediaInfo(match.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const info: any = await withTimeout(prov.fetchMediaInfo(match.id), 12_000, `${p.id}.info`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let ep: any;
       if (opts.type === 'movie') {
@@ -67,33 +101,50 @@ export async function scrapeStream(opts: {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ep = (info.episodes || []).find((e: any) => e.season === seasonNum && e.number === episodeNum);
       }
-      if (!ep) continue;
+      if (!ep) {
+        attempts.push({ provider: p.id, stage: 'info', ok: false, note: 'episode not found' });
+        continue;
+      }
 
-      const s = await prov.fetchEpisodeSources(ep.id, info.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const s: any = await withTimeout(prov.fetchEpisodeSources(ep.id, info.id), 18_000, `${p.id}.sources`);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const chosen = (s.sources || []).find((x: any) => x.isM3U8) || s.sources?.[0];
-      if (!chosen) continue;
+      if (!chosen) {
+        attempts.push({ provider: p.id, stage: 'sources', ok: false, note: 'no playable source' });
+        continue;
+      }
 
+      attempts.push({ provider: p.id, stage: 'ok', ok: true, note: chosen.isM3U8 ? 'hls' : 'file' });
       return {
-        sourceId: p.id,
-        type: chosen.isM3U8 ? 'hls' : 'file',
-        playlist: chosen.isM3U8 ? chosen.url : undefined,
-        qualities: !chosen.isM3U8 ? { default: { type: 'mp4', url: chosen.url } } : undefined,
-        headers: s.headers || {},
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        captions: (s.subtitles || []).map((c: any) => ({
-          id: c.lang || c.id || 'sub',
-          language: c.lang || 'sub',
-          url: c.url,
-          type: 'vtt',
-        })),
+        media: { title, year },
+        attempts,
+        result: {
+          sourceId: p.id,
+          type: chosen.isM3U8 ? 'hls' : 'file',
+          playlist: chosen.isM3U8 ? chosen.url : undefined,
+          qualities: !chosen.isM3U8 ? { default: { type: 'mp4', url: chosen.url } } : undefined,
+          headers: s.headers || {},
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          captions: (s.subtitles || []).map((c: any) => ({
+            id: c.lang || c.id || 'sub',
+            language: c.lang || 'sub',
+            url: c.url,
+            type: 'vtt',
+          })),
+        },
       };
-    } catch {
+    } catch (e) {
+      attempts.push({
+        provider: p.id,
+        stage: 'search',
+        ok: false,
+        note: e instanceof Error ? e.message.slice(0, 120) : String(e).slice(0, 120),
+      });
       continue;
     }
   }
 
-  // getTVSeason kept imported for potential future episode-id matching
   void getTVSeason;
-  return null;
+  return { result: null, attempts, media: { title, year } };
 }

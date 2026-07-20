@@ -3,13 +3,24 @@
 import { useState } from 'react';
 import { SelfHostedPlayer } from '@/components/media/SelfHostedPlayer';
 
+interface Attempt {
+  provider: string;
+  stage: string;
+  ok: boolean;
+  note?: string;
+}
+
 interface StreamResp {
-  sourceId: string;
-  type: 'hls' | 'file';
+  sourceId?: string;
+  type?: 'hls' | 'file';
   playlist?: string;
   qualities?: Record<string, { type: string; url: string }>;
-  headers: Record<string, string>;
-  captions: { id: string; language: string; url: string; type: string }[];
+  headers?: Record<string, string>;
+  captions?: { id: string; language: string; url: string; type: string }[];
+  attempts?: Attempt[];
+  media?: { title: string; year: number };
+  error?: string;
+  detail?: string;
 }
 
 export default function ReproductorTest() {
@@ -31,19 +42,26 @@ export default function ReproductorTest() {
     setLoading(true);
     setError(null);
     setData(null);
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 65_000); // never spin forever
     try {
       const params = new URLSearchParams({ type, id });
       if (type === 'tv') {
         params.set('season', season);
         params.set('episode', episode);
       }
-      const r = await fetch(`/api/stream?${params.toString()}`);
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.detail || j.error || 'Error');
-      setData(j);
+      const r = await fetch(`/api/stream?${params.toString()}`, { signal: ctrl.signal });
+      const j: StreamResp = await r.json();
+      setData(j); // keep attempts even on failure
+      if (!r.ok) setError(j.detail || j.error || `HTTP ${r.status}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      if (e instanceof Error && e.name === 'AbortError') {
+        setError('Timeout: la búsqueda tardó más de 65s (todas las fuentes colgaron).');
+      } else {
+        setError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
+      clearTimeout(timer);
       setLoading(false);
     }
   };
@@ -54,7 +72,7 @@ export default function ReproductorTest() {
         REPRODUCTOR — PRUEBA (self-hosted)
       </h1>
       <p className="text-xs text-[#737373] mb-4">
-        Sin anuncios · player propio · selector de audio. TMDB id + tipo.
+        Sin anuncios · player propio · diagnóstico por fuente.
       </p>
 
       <div className="flex flex-wrap items-end gap-2 mb-4">
@@ -112,20 +130,38 @@ export default function ReproductorTest() {
         </div>
       )}
 
-      {data && data.type === 'hls' && data.playlist && (
+      {/* Diagnostics: what each source did */}
+      {data?.attempts && data.attempts.length > 0 && (
+        <div className="mb-4 border border-[#1f1f1f] bg-[#0A0A0A] p-3">
+          <div className="text-[10px] font-black tracking-widest text-[#525252] mb-2">
+            DIAGNÓSTICO {data.media ? `· ${data.media.title} (${data.media.year})` : ''}
+          </div>
+          <ul className="space-y-1 text-xs font-mono">
+            {data.attempts.map((a, i) => (
+              <li key={i} className={a.ok ? 'text-green-400' : 'text-[#a3a3a3]'}>
+                {a.ok ? '✅' : '❌'} {a.provider} · {a.stage}
+                {a.note ? ` · ${a.note}` : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data?.type === 'hls' && data.playlist && (
         <>
           <div className="text-[11px] text-[#737373] mb-2">
-            Fuente: <span className="text-[#FFE600]">{data.sourceId}</span> · {data.captions.length} subtítulos
+            Fuente: <span className="text-[#FFE600]">{data.sourceId}</span> ·{' '}
+            {data.captions?.length || 0} subtítulos
           </div>
           <div className="aspect-video w-full">
-            <SelfHostedPlayer playlistUrl={proxiedPlaylist(data)} captions={data.captions} />
+            <SelfHostedPlayer playlistUrl={proxiedPlaylist(data)} captions={data.captions || []} />
           </div>
         </>
       )}
 
-      {data && data.type === 'file' && (
+      {data?.type === 'file' && (
         <div className="text-amber-400 text-sm">
-          La fuente devolvió archivo directo (mp4), no HLS. Fuente: {data.sourceId}. Calidades:{' '}
+          Fuente devolvió archivo directo (mp4): {data.sourceId}. Calidades:{' '}
           {Object.keys(data.qualities || {}).join(', ')}
         </div>
       )}
